@@ -1,15 +1,8 @@
-{
+﻿{
   "version": 2,
   "name": "emd-dashboard",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "env": {
     "NODE_ENV": "production"
   },
   "regions": ["iad1"]
 }
-
