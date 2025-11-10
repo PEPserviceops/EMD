@@ -10,12 +10,6 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
   },
   
-  // Optimize for serverless deployment
-  experimental: {
-    // Enable server actions if needed in the future
-    serverActions: false,
-  },
-  
   // Configure headers for API routes
   async headers() {
     return [

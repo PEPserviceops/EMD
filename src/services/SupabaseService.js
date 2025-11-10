@@ -217,7 +217,10 @@ class SupabaseService {
 
       const { data, error } = await supabase
         .from('alerts_history')
-        .insert(alertRecord)
+        .upsert(alertRecord, {
+          onConflict: 'alert_id',
+          ignoreDuplicates: false
+        })
         .select()
         .single();
 
