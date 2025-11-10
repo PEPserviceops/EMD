@@ -66,3 +66,16 @@ build/
 .DS_Store
 Thumbs.db
 
+# Next.js
+.next/
+out/
+
+# SQLite database
+data/cache.db
+data/cache.db-journal
+
+# Augment
+.augment/
+
+# Test results
+tests/e2e-test-results.json

@@ -1,0 +1,47 @@
+{
+  "filemaker": {
+    "host": "modd.mainspringhost.com",
+    "database": "PEP2_1",
+    "layout": "jobs_api",
+    "polling_interval": 30000,
+    "timeout": 10000,
+    "retry_attempts": 3
+  },
+  "alerts": {
+    "severity_levels": {
+      "LOW": {
+        "color": "#10B981",
+        "icon": "info",
+        "auto_dismiss": true,
+        "dismiss_after": 3600
+      },
+      "MEDIUM": {
+        "color": "#F59E0B",
+        "icon": "warning",
+        "auto_dismiss": false,
+        "notification": "dashboard"
+      },
+      "HIGH": {
+        "color": "#EF4444",
+        "icon": "alert-triangle",
+        "auto_dismiss": false,
+        "notification": "dashboard+sound"
+      },
+      "CRITICAL": {
+        "color": "#991B1B",
+        "icon": "alert-octagon",
+        "auto_dismiss": false,
+        "notification": "dashboard+sound+sms"
+      }
+    },
+    "deduplication_window": 300,
+    "max_alerts_per_job": 5
+  },
+  "performance": {
+    "max_jobs_per_query": 100,
+    "cache_ttl": 60,
+    "enable_compression": true
+  },
+  "timezone": "America/Denver"
+}
+

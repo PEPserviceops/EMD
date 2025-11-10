@@ -1,0 +1,31 @@
+{
+  "recordId": "282027",
+  "modId": "423",
+  "fieldData": {
+    "_kp_job_id": "",
+    "job_date": "06/28/2023",
+    "job_status": "DELETED",
+    "job_type": "Recover",
+    "_kf_notification_id": "Done",
+    "notes_call_ahead": "30 Min Prior",
+    "notes_driver": "",
+    "_kf_client_code_id": "Ricoh-C",
+    "_kf_disposition": "Ricoh/ABS",
+    "_kf_trucks_id": "",
+    "time_arival": "08:33:00",
+    "time_complete": "11:24:43",
+    "address_C1": "MUSC MAIN  BIOMED",
+    "due_date": "",
+    "Customer_C1": "US Bank",
+    "_kf_route_id": "",
+    "_kf_driver_id": "",
+    "_kf_lead_id": "",
+    "order_C1": "",
+    "order_C2": "",
+    "address_C2": "",
+    "Customer_C2": "",
+    "contact_C1": "Mark Herb (720) 417-8056",
+    "job_status_driver": ""
+  },
+  "portalData": {}
+}

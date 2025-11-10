@@ -11,7 +11,14 @@
     "test": "jest",
     "test:integration": "jest --config jest.integration.config.js",
     "test:load": "k6 run tests/load/dashboard.js",
-    "test:all": "npm run test && npm run test:integration"
+    "test:all": "npm run test && npm run test:integration && npm run test:e2e",
+    "test:filemaker": "node tests/test-filemaker-connection.js",
+    "test:filemaker:detailed": "node tests/test-filemaker-detailed.js",
+    "test:filemaker:active": "node tests/get-active-jobs.js",
+    "test:alerts": "node tests/test-alert-rules.js",
+    "test:alerts:enhanced": "node tests/test-alert-engine-enhanced.js",
+    "test:polling": "node tests/test-polling-system.js",
+    "test:e2e": "node tests/test-end-to-end.js"
   },
   "dependencies": {
     "next": "^14.0.0",
@@ -35,7 +42,8 @@
     "winston": "^3.11.0",
     "bull": "^4.11.0",
     "socket.io": "^4.5.0",
-    "socket.io-client": "^4.5.0"
+    "socket.io-client": "^4.5.0",
+    "dotenv": "^16.3.0"
   },
   "devDependencies": {
     "@testing-library/react": "^14.0.0",

@@ -1,0 +1,218 @@
+/**
+ * FileMaker Data API Integration Module
+ * Handles authentication, token management, and data queries
+ */
+
+const axios = require('axios');
+
+class FileMakerAPI {
+  constructor(config) {
+    this.host = config.host || process.env.FILEMAKER_HOST;
+    this.database = config.database || process.env.FILEMAKER_DATABASE;
+    this.layout = config.layout || process.env.FILEMAKER_LAYOUT || 'jobs_api';
+    this.username = config.username || process.env.FILEMAKER_USER;
+    this.password = config.password || process.env.FILEMAKER_PASSWORD;
+    this.token = null;
+    this.tokenExpiry = null;
+  }
+
+  /**
+   * Get authentication token from FileMaker
+   * @returns {Promise<string>} Authentication token
+   */
+  async getToken() {
+    // Return existing token if still valid
+    if (this.token && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+      return this.token;
+    }
+
+    try {
+      const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/sessions`;
+      const auth = Buffer.from(`${this.username}:${this.password}`).toString('base64');
+
+      const response = await axios.post(url, {}, {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data && response.data.response && response.data.response.token) {
+        this.token = response.data.response.token;
+        // Token expires in 15 minutes, refresh after 14 minutes
+        this.tokenExpiry = Date.now() + (14 * 60 * 1000);
+        return this.token;
+      }
+
+      throw new Error('Failed to retrieve token from FileMaker');
+    } catch (error) {
+      console.error('FileMaker authentication error:', error.message);
+      throw new Error(`Authentication failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Close FileMaker session
+   */
+  async closeSession() {
+    if (!this.token) return;
+
+    try {
+      const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/sessions/${this.token}`;
+      await axios.delete(url);
+      this.token = null;
+      this.tokenExpiry = null;
+    } catch (error) {
+      console.error('Error closing FileMaker session:', error.message);
+    }
+  }
+
+  /**
+   * Find a specific job by ID
+   * @param {string} jobId - Job ID to search for
+   * @returns {Promise<Object>} Job data
+   */
+  async findJob(jobId) {
+    const token = await this.getToken();
+
+    try {
+      const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/_find`;
+      
+      const response = await axios.post(url, {
+        query: [{
+          'job_id': jobId
+        }]
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data && response.data.response && response.data.response.data) {
+        return response.data.response.data[0];
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error finding job ${jobId}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all active jobs
+   * @param {Object} options - Query options
+   * @returns {Promise<Array>} Array of job records
+   */
+  async getActiveJobs(options = {}) {
+    const token = await this.getToken();
+
+    try {
+      const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/records`;
+      
+      const params = {
+        _limit: options.limit || 100,
+        _offset: options.offset || 1
+      };
+
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        params
+      });
+
+      if (response.data && response.data.response && response.data.response.data) {
+        return response.data.response.data;
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Error fetching active jobs:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Find jobs matching specific criteria
+   * @param {Array} query - FileMaker query array
+   * @returns {Promise<Array>} Matching job records
+   */
+  async findJobs(query) {
+    const token = await this.getToken();
+
+    try {
+      const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/_find`;
+      
+      const response = await axios.post(url, {
+        query: query
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data && response.data.response && response.data.response.data) {
+        return response.data.response.data;
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Error finding jobs:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Test FileMaker connection
+   * @returns {Promise<Object>} Connection test result
+   */
+  async testConnection() {
+    try {
+      const token = await this.getToken();
+      const testJob = await this.findJob('603142');
+      
+      return {
+        success: true,
+        token: token ? 'Token acquired' : 'No token',
+        testQuery: testJob ? 'Job found' : 'Job not found',
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+}
+
+// Quick connectivity test function (from QUICK_START.md)
+async function testFileMakerConnection() {
+  const api = new FileMakerAPI({
+    host: 'modd.mainspringhost.com',
+    database: 'PEP2_1',
+    username: 'trevor_api',
+    password: 'XcScS2yRoTtMo7'
+  });
+
+  try {
+    const result = await api.testConnection();
+    console.log('Connection test result:', result);
+    await api.closeSession();
+    return result;
+  } catch (error) {
+    console.error('Connection test failed:', error);
+    throw error;
+  }
+}
+
+module.exports = {
+  FileMakerAPI,
+  testFileMakerConnection
+};
+

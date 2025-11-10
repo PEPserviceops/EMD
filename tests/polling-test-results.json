@@ -1,0 +1,149 @@
+{
+  "stats": {
+    "totalPolls": 5,
+    "successfulPolls": 5,
+    "failedPolls": 0,
+    "totalJobsProcessed": 490,
+    "totalAlertsGenerated": 9,
+    "averageResponseTime": 336,
+    "lastError": null,
+    "isRunning": false,
+    "pollCount": 5,
+    "errorCount": 0,
+    "lastPollTime": "2025-11-10T18:09:54.344Z",
+    "uptime": 0,
+    "config": {
+      "interval": 10000,
+      "batchSize": 100
+    }
+  },
+  "health": {
+    "status": "unhealthy",
+    "isRunning": false,
+    "successRate": 100,
+    "lastPollTime": "2025-11-10T18:09:54.344Z",
+    "timeSinceLastPoll": 986,
+    "errorCount": 0,
+    "lastError": null
+  },
+  "alertSummary": {
+    "total": 9,
+    "bySeverity": {
+      "LOW": 0,
+      "MEDIUM": 4,
+      "HIGH": 5,
+      "CRITICAL": 0
+    },
+    "recent": [
+      {
+        "id": "arrival-without-completion-616542",
+        "ruleId": "arrival-without-completion",
+        "ruleName": "Arrival Without Completion",
+        "severity": "HIGH",
+        "message": "Job 356231 has arrival time but no completion time (Status: Re-scheduled)",
+        "jobId": "616542",
+        "recordId": "616542",
+        "timestamp": "2025-11-10T18:09:14.105Z",
+        "acknowledged": false
+      },
+      {
+        "id": "attempted-status-616543",
+        "ruleId": "attempted-status",
+        "ruleName": "Job Attempted But Not Completed",
+        "severity": "HIGH",
+        "message": "Job 356232 was attempted but not completed - requires follow-up",
+        "jobId": "616543",
+        "recordId": "616543",
+        "timestamp": "2025-11-10T18:09:14.105Z",
+        "acknowledged": false
+      },
+      {
+        "id": "missing-truck-assignment-616557",
+        "ruleId": "missing-truck-assignment",
+        "ruleName": "Missing Truck Assignment",
+        "severity": "HIGH",
+        "message": "Job 356246 is Entered but has no truck assigned",
+        "jobId": "616557",
+        "recordId": "616557",
+        "timestamp": "2025-11-10T18:09:14.105Z",
+        "acknowledged": false
+      },
+      {
+        "id": "missing-truck-assignment-616604",
+        "ruleId": "missing-truck-assignment",
+        "ruleName": "Missing Truck Assignment",
+        "severity": "HIGH",
+        "message": "Job 356293 is Entered but has no truck assigned",
+        "jobId": "616604",
+        "recordId": "616604",
+        "timestamp": "2025-11-10T18:09:14.105Z",
+        "acknowledged": false
+      },
+      {
+        "id": "attempted-status-616608",
+        "ruleId": "attempted-status",
+        "ruleName": "Job Attempted But Not Completed",
+        "severity": "HIGH",
+        "message": "Job 356297 was attempted but not completed - requires follow-up",
+        "jobId": "616608",
+        "recordId": "616608",
+        "timestamp": "2025-11-10T18:09:14.105Z",
+        "acknowledged": false
+      },
+      {
+        "id": "long-in-progress-616542",
+        "ruleId": "long-in-progress",
+        "ruleName": "Job In Progress Too Long",
+        "severity": "MEDIUM",
+        "message": "Job 356231 has been in progress for over 4 hours (arrived at 12:05:00)",
+        "jobId": "616542",
+        "recordId": "616542",
+        "timestamp": "2025-11-10T18:09:14.105Z",
+        "acknowledged": false
+      },
+      {
+        "id": "rescheduled-status-616542",
+        "ruleId": "rescheduled-status",
+        "ruleName": "Job Rescheduled",
+        "severity": "MEDIUM",
+        "message": "Job 356231 has been rescheduled - verify new schedule",
+        "jobId": "616542",
+        "recordId": "616542",
+        "timestamp": "2025-11-10T18:09:14.105Z",
+        "acknowledged": false
+      },
+      {
+        "id": "rescheduled-status-616551",
+        "ruleId": "rescheduled-status",
+        "ruleName": "Job Rescheduled",
+        "severity": "MEDIUM",
+        "message": "Job 356240 has been rescheduled - verify new schedule",
+        "jobId": "616551",
+        "recordId": "616551",
+        "timestamp": "2025-11-10T18:09:14.105Z",
+        "acknowledged": false
+      },
+      {
+        "id": "rescheduled-status-616540",
+        "ruleId": "rescheduled-status",
+        "ruleName": "Job Rescheduled",
+        "severity": "MEDIUM",
+        "message": "Job 356229 has been rescheduled - verify new schedule",
+        "jobId": "616540",
+        "recordId": "616540",
+        "timestamp": "2025-11-10T18:09:14.104Z",
+        "acknowledged": false
+      }
+    ]
+  },
+  "cacheStats": {
+    "size": 0,
+    "maxSize": 1000,
+    "ttl": 300000,
+    "totalHits": 0,
+    "persistToDisk": true,
+    "dbPath": "./data/test-cache.db"
+  },
+  "totalChanges": 0,
+  "timestamp": "2025-11-10T18:09:55.333Z"
+}
