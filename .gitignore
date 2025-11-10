@@ -79,3 +79,7 @@ data/cache.db-journal
 
 # Test results
 tests/e2e-test-results.json
+
+# Credentials and secrets
+credentials.md.txt
+credentials.*

@@ -1,9 +1,11 @@
 /**
  * Alert Engine Module
  * Evaluates job data against rules and generates alerts
+ * Integrated with Supabase for historical alert storage
  */
 
 const { parseISO, addHours, isBefore } = require('date-fns');
+const supabaseService = require('../services/SupabaseService');
 
 // Alert severity levels
 const SEVERITY = {
@@ -323,6 +325,13 @@ class AlertEngine {
           this.activeAlerts.set(alert.id, alert);
           this.priorityQueue.enqueue(alert);
           this.alertHistory.push({ ...alert, action: 'created' });
+
+          // Store new alert in Supabase
+          if (supabaseService.isEnabled()) {
+            this._storeAlertInSupabase(alert, job).catch(error => {
+              console.error('Failed to store alert in Supabase:', error.message);
+            });
+          }
         }
       }
     }
@@ -335,6 +344,16 @@ class AlertEngine {
         this.activeAlerts.delete(alertId);
         this.priorityQueue.remove(alertId);
         this.alertHistory.push({ ...alert, action: 'resolved', resolvedAt: new Date().toISOString() });
+
+        // Update alert as resolved in Supabase
+        if (supabaseService.isEnabled()) {
+          supabaseService.updateAlert(alert.id, {
+            resolved: true,
+            resolved_at: new Date().toISOString()
+          }).catch(error => {
+            console.error('Failed to update resolved alert in Supabase:', error.message);
+          });
+        }
       }
     }
 
@@ -425,6 +444,18 @@ class AlertEngine {
       alert.acknowledgedBy = acknowledgedBy;
       alert.acknowledgedAt = new Date().toISOString();
       this.alertHistory.push({ ...alert, action: 'acknowledged' });
+
+      // Update alert in Supabase
+      if (supabaseService.isEnabled()) {
+        supabaseService.updateAlert(alertId, {
+          acknowledged: true,
+          acknowledged_at: alert.acknowledgedAt,
+          acknowledged_by: acknowledgedBy
+        }).catch(error => {
+          console.error('Failed to update acknowledged alert in Supabase:', error.message);
+        });
+      }
+
       return true;
     }
     return false;
@@ -439,14 +470,27 @@ class AlertEngine {
   dismissAlert(alertId, dismissedBy) {
     const alert = this.activeAlerts.get(alertId);
     if (alert) {
+      const dismissedAt = new Date().toISOString();
       this.activeAlerts.delete(alertId);
       this.priorityQueue.remove(alertId);
       this.alertHistory.push({
         ...alert,
         action: 'dismissed',
         dismissedBy,
-        dismissedAt: new Date().toISOString()
+        dismissedAt
       });
+
+      // Update alert in Supabase
+      if (supabaseService.isEnabled()) {
+        supabaseService.updateAlert(alertId, {
+          dismissed: true,
+          dismissed_at: dismissedAt,
+          dismissed_by: dismissedBy
+        }).catch(error => {
+          console.error('Failed to update dismissed alert in Supabase:', error.message);
+        });
+      }
+
       return true;
     }
     return false;
@@ -572,6 +616,42 @@ class AlertEngine {
    */
   setDeduplicationWindow(milliseconds) {
     this.deduplicationWindow = milliseconds;
+  }
+
+  /**
+   * Store alert in Supabase (helper method)
+   * @param {Object} alert - Alert object
+   * @param {Object} job - Job object that triggered the alert
+   * @private
+   */
+  async _storeAlertInSupabase(alert, job) {
+    try {
+      const fieldData = job.fieldData || {};
+      await supabaseService.storeAlert({
+        alert_id: alert.id,  // This is the correct field name
+        id: alert.id,        // Also pass as 'id' for compatibility
+        ruleId: alert.ruleId,
+        ruleName: alert.ruleName,
+        severity: alert.severity,
+        title: alert.ruleName || alert.message?.substring(0, 100),
+        message: alert.message,
+        jobId: fieldData._kp_job_id || job.recordId,
+        job_date: fieldData.job_date,
+        jobStatus: fieldData.job_status,
+        truckId: fieldData._kf_trucks_id,
+        timestamp: alert.timestamp || new Date().toISOString(),
+        details: {
+          recordId: job.recordId,
+          modId: job.modId,
+          fingerprint: alert.fingerprint,
+          driver_id: fieldData._kf_driver_id,
+          fieldData: fieldData
+        }
+      });
+    } catch (error) {
+      console.error('Error storing alert in Supabase:', error);
+      throw error;
+    }
   }
 }
 

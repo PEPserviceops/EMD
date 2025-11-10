@@ -1,10 +1,12 @@
 /**
  * Polling Service
  * Manages 30-second polling of FileMaker data and change detection
+ * Integrated with Supabase for historical data storage
  */
 
 const { FileMakerAPI } = require('../api/filemaker');
 const { AlertEngine } = require('../api/alerts');
+const supabaseService = require('./SupabaseService');
 const EventEmitter = require('events');
 
 class PollingService extends EventEmitter {
@@ -111,6 +113,17 @@ class PollingService extends EventEmitter {
 
       console.log(`[Poll #${this.pollCount}] Retrieved ${activeJobs.length} active jobs (${jobs.length} total)`);
 
+      // Store job snapshots in Supabase for historical analysis
+      if (supabaseService.isEnabled() && activeJobs.length > 0) {
+        try {
+          const storedJobs = await supabaseService.storeJobSnapshotBatch(activeJobs);
+          console.log(`[Poll #${this.pollCount}] Stored ${storedJobs.length} job snapshots in Supabase`);
+        } catch (error) {
+          console.error(`[Poll #${this.pollCount}] Failed to store job snapshots:`, error.message);
+          // Continue processing even if Supabase storage fails
+        }
+      }
+
       // Evaluate jobs against alert rules
       const alertResult = this.alertEngine.evaluateJobs(activeJobs);
 
@@ -124,6 +137,28 @@ class PollingService extends EventEmitter {
         this.stats.successfulPolls;
 
       this.lastPollTime = new Date();
+
+      // Store system metrics in Supabase
+      if (supabaseService.isEnabled()) {
+        try {
+          await supabaseService.storeSystemMetric({
+            type: 'polling',
+            name: 'poll_cycle_complete',
+            value: responseTime,
+            unit: 'milliseconds',
+            component: 'polling',
+            metadata: {
+              poll_count: this.pollCount,
+              jobs_processed: activeJobs.length,
+              alerts_generated: alertResult.new,
+              alerts_resolved: alertResult.resolved,
+              total_active_alerts: alertResult.total
+            }
+          });
+        } catch (error) {
+          console.error(`[Poll #${this.pollCount}] Failed to store system metrics:`, error.message);
+        }
+      }
 
       // Emit events
       this.emit('poll', {
