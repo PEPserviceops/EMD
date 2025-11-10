@@ -101,38 +101,139 @@ class FileMakerAPI {
   }
 
   /**
-   * Get all active jobs
-   * @param {Object} options - Query options
+   * Get all active jobs with enhanced filtering
+   * @param {Object} options - Query options with date filtering
    * @returns {Promise<Array>} Array of job records
    */
   async getActiveJobs(options = {}) {
     const token = await this.getToken();
 
     try {
-      const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/records`;
+      // Default to recent jobs (last 30 days) to avoid historical data
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      const params = {
-        _limit: options.limit || 100,
-        _offset: options.offset || 1
+      const startDate = options.startDate || thirtyDaysAgo.toLocaleDateString('en-US');
+      const endDate = options.endDate || new Date().toLocaleDateString('en-US');
+      
+      console.log(`[FileMaker] Fetching jobs from ${startDate} to ${endDate}`);
+
+      // Use find query with date range for current data only
+      const findQuery = {
+        query: [{
+          'job_date': `${startDate}...${endDate}`
+        }],
+        sort: [{
+          'job_date': {
+            'fieldName': 'job_date',
+            'sortOrder': 'descend'
+          }
+        }],
+        limit: options.limit || 200, // Increased default limit
+        offset: options.offset || 1
       };
 
-      const response = await axios.get(url, {
+      const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/_find`;
+      
+      const response = await axios.post(url, findQuery, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        },
-        params
+        }
       });
 
       if (response.data && response.data.response && response.data.response.data) {
-        return response.data.response.data;
+        const jobs = response.data.response.data;
+        console.log(`[FileMaker] Retrieved ${jobs.length} jobs from date range query`);
+        return jobs;
       }
 
-      return [];
+      // Fallback to regular record query if find query fails
+      console.log('[FileMaker] Fallback to regular record query');
+      return await this._getRecordsFallback(token, options);
     } catch (error) {
-      console.error('Error fetching active jobs:', error.message);
-      throw error;
+      console.error('Error fetching active jobs with date filter:', error.message);
+      // Try fallback without date filtering
+      try {
+        console.log('[FileMaker] Attempting fallback query...');
+        return await this._getRecordsFallback(token, options);
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError.message);
+        throw error;
+      }
     }
+  }
+
+  /**
+   * Fallback method for getting records without date filtering
+   * @private
+   */
+  async _getRecordsFallback(token, options = {}) {
+    const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/records`;
+    
+    const params = {
+      _limit: options.limit || 200,
+      _offset: options.offset || 1
+    };
+
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      params
+    });
+
+    if (response.data && response.data.response && response.data.response.data) {
+      let jobs = response.data.response.data;
+      
+      // Filter out DELETED jobs and apply client-side date filtering
+      jobs = jobs.filter(job => {
+        const status = job.fieldData?.job_status;
+        const isNotDeleted = status && status !== 'DELETED' && status !== '';
+        
+        // Apply date filtering if no server-side filtering
+        if (options.startDate && job.fieldData?.job_date) {
+          const jobDate = new Date(job.fieldData.job_date);
+          const startDate = new Date(options.startDate);
+          return isNotDeleted && jobDate >= startDate;
+        }
+        
+        return isNotDeleted;
+      });
+
+      // Sort by job_date desc (newest first)
+      jobs.sort((a, b) => {
+        const dateA = new Date(a.fieldData?.job_date || 0);
+        const dateB = new Date(b.fieldData?.job_date || 0);
+        return dateB - dateA;
+      });
+
+      console.log(`[FileMaker] Fallback: Retrieved ${jobs.length} filtered and sorted jobs`);
+      return jobs;
+    }
+
+    return [];
+  }
+
+  /**
+   * Get current/recent jobs specifically
+   * @param {Object} options - Query options
+   * @returns {Promise<Array>} Array of recent job records
+   */
+  async getCurrentJobs(options = {}) {
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const startDate = options.startDate || yesterday.toLocaleDateString('en-US');
+    const endDate = options.endDate || now.toLocaleDateString('en-US');
+    
+    return await this.getActiveJobs({
+      ...options,
+      startDate,
+      endDate
+    });
   }
 
   /**

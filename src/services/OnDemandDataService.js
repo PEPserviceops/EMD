@@ -10,8 +10,9 @@ const { AlertEngine } = require('../api/alerts');
 class OnDemandDataService {
   constructor(config = {}) {
     this.config = {
-      cacheTTL: config.cacheTTL || 30000, // 30 seconds
-      batchSize: config.batchSize || 100,
+      cacheTTL: config.cacheTTL || 15000, // Reduced to 15 seconds for fresher data
+      batchSize: config.batchSize || 200, // Increased batch size
+      daysBack: config.daysBack || 30, // Default to last 30 days
       ...config
     };
 
@@ -43,18 +44,25 @@ class OnDemandDataService {
   }
 
   /**
-   * Fetch fresh data from FileMaker
+   * Fetch fresh data from FileMaker with enhanced date filtering
    */
   async fetchData() {
     this.stats.totalFetches++;
     const startTime = Date.now();
 
     try {
-      console.log('[OnDemandDataService] Fetching data from FileMaker...');
+      console.log('[OnDemandDataService] Fetching current data from FileMaker (last 30 days)...');
 
-      // Fetch jobs from FileMaker
+      // Calculate date range (last 30 days to avoid historical data)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - this.config.daysBack);
+
+      // Fetch jobs from FileMaker with date filtering
       const jobs = await this.fileMakerAPI.getActiveJobs({
-        limit: this.config.batchSize
+        limit: this.config.batchSize,
+        startDate: startDate.toLocaleDateString('en-US'),
+        endDate: endDate.toLocaleDateString('en-US')
       });
 
       // Filter out DELETED jobs
@@ -63,17 +71,32 @@ class OnDemandDataService {
         return status && status !== 'DELETED' && status !== '';
       });
 
-      console.log(`[OnDemandDataService] Retrieved ${activeJobs.length} active jobs`);
+      console.log(`[OnDemandDataService] Retrieved ${activeJobs.length} active jobs (${jobs.length} total)`);
+
+      // Additional date validation - ensure we're getting recent data
+      const recentJobs = activeJobs.filter(job => {
+        if (!job.fieldData?.job_date) return false;
+        
+        const jobDate = new Date(job.fieldData.job_date);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - this.config.daysBack);
+        
+        return jobDate >= cutoffDate;
+      });
+
+      if (recentJobs.length < activeJobs.length) {
+        console.log(`[OnDemandDataService] Filtered out ${activeJobs.length - recentJobs.length} old records`);
+      }
 
       // Generate alerts
-      const alertResult = this.alertEngine.evaluateJobs(activeJobs);
+      const alertResult = this.alertEngine.evaluateJobs(recentJobs);
 
       // Get all active alerts from the engine (not just new ones)
       const alerts = this.alertEngine.getActiveAlerts();
 
       // Update cache
       this.cache = {
-        jobs: activeJobs,
+        jobs: recentJobs,
         alerts: alerts,
         timestamp: Date.now()
       };
@@ -86,12 +109,16 @@ class OnDemandDataService {
 
       return {
         success: true,
-        jobs: activeJobs,
+        jobs: recentJobs,
         alerts: alerts,
         stats: {
-          jobCount: activeJobs.length,
+          jobCount: recentJobs.length,
           alertCount: alerts.length,
-          responseTime
+          responseTime,
+          dateRange: {
+            start: startDate.toISOString().split('T')[0],
+            end: endDate.toISOString().split('T')[0]
+          }
         }
       };
     } catch (error) {

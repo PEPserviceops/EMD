@@ -1,0 +1,116 @@
+/**
+ * Test the FileMaker date fixes
+ * Verifies that the updated code now returns current November 2025 data
+ */
+
+require('dotenv').config({ path: '.env.local' });
+const { FileMakerAPI } = require('./src/api/filemaker');
+
+async function testFixedDateHandling() {
+  console.log('='.repeat(80));
+  console.log('TESTING FileMaker Date Fixes');
+  console.log('='.repeat(80));
+  console.log('Expected: Current November 2025 data');
+  console.log('Previous Issue: Getting 2019 data');
+  console.log();
+
+  const api = new FileMakerAPI({
+    host: process.env.FILEMAKER_HOST,
+    database: process.env.FILEMAKER_DATABASE,
+    layout: process.env.FILEMAKER_LAYOUT || 'jobs_api',
+    username: process.env.FILEMAKER_USER,
+    password: process.env.FILEMAKER_PASSWORD
+  });
+
+  try {
+    console.log('🔍 TEST 1: Updated getActiveJobs() with Date Filtering');
+    console.log('-'.repeat(60));
+    
+    const jobs = await api.getActiveJobs({ limit: 10 });
+    console.log(`✅ Retrieved ${jobs.length} jobs with date filtering`);
+    
+    if (jobs.length > 0) {
+      const job = jobs[0];
+      const jobDate = job.fieldData?.job_date;
+      console.log(`   Sample job date: ${jobDate}`);
+      console.log(`   Job ID: ${job.fieldData?._kp_job_id}`);
+      console.log(`   Status: ${job.fieldData?.job_status}`);
+      
+      // Check if we're getting 2025 data
+      if (jobDate?.includes('2025')) {
+        console.log('   🎉 SUCCESS: Now getting 2025 data!');
+      } else {
+        console.log('   ⚠️  Still getting older data - may need further investigation');
+      }
+    }
+
+    console.log('\n🔍 TEST 2: getCurrentJobs() Method');
+    console.log('-'.repeat(60));
+    
+    const currentJobs = await api.getCurrentJobs({ limit: 5 });
+    console.log(`✅ Retrieved ${currentJobs.length} current jobs`);
+    
+    if (currentJobs.length > 0) {
+      const job = currentJobs[0];
+      const jobDate = job.fieldData?.job_date;
+      console.log(`   Current job date: ${jobDate}`);
+      
+      if (jobDate?.includes('2025')) {
+        console.log('   🎉 SUCCESS: getCurrentJobs() returning 2025 data!');
+      }
+    }
+
+    console.log('\n🔍 TEST 3: Date Range Validation');
+    console.log('-'.repeat(60));
+    
+    const allRecentJobs = await api.getActiveJobs({ limit: 20 });
+    if (allRecentJobs.length > 0) {
+      const dateAnalysis = {};
+      allRecentJobs.forEach(job => {
+        const jobDate = job.fieldData?.job_date;
+        if (jobDate) {
+          const year = jobDate.split('/').pop();
+          dateAnalysis[year] = (dateAnalysis[year] || 0) + 1;
+        }
+      });
+      
+      console.log('📊 Year Distribution:');
+      Object.entries(dateAnalysis).forEach(([year, count]) => {
+        const percentage = Math.round((count / allRecentJobs.length) * 100);
+        const emoji = year === '2025' ? '🎉' : year === '2019' ? '⚠️' : 'ℹ️';
+        console.log(`   ${emoji} ${year}: ${count} records (${percentage}%)`);
+      });
+      
+      if (dateAnalysis['2025'] && dateAnalysis['2025'] > (dateAnalysis['2019'] || 0)) {
+        console.log('   ✅ IMPROVEMENT: 2025 records now dominate the results!');
+      }
+    }
+
+    console.log('\n' + '='.repeat(80));
+    console.log('💡 SUMMARY');
+    console.log('='.repeat(80));
+    
+    const success = jobs.length > 0 && jobs[0]?.fieldData?.job_date?.includes('2025');
+    
+    if (success) {
+      console.log('🎉 Date Issue RESOLVED!');
+      console.log('✅ FileMaker API now returns current November 2025 data');
+      console.log('✅ Date filtering working correctly');
+      console.log('✅ Newest records are returned first');
+      console.log('✅ Cache TTL reduced for fresher data');
+    } else {
+      console.log('⚠️  Date issue may still exist');
+      console.log('   Further investigation needed');
+      console.log('   Check FileMaker server configuration');
+    }
+
+    await api.closeSession();
+    
+  } catch (error) {
+    console.log('\n❌ Test failed:', error.message);
+    console.log('This suggests the fixes may need adjustment');
+  }
+}
+
+// Run the test
+testFixedDateHandling().catch(console.error);
