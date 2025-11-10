@@ -1,0 +1,7 @@
+# Replace with your actual Samsara API token
+# samsara_api_YOUR_TOKEN_HERE
+
+# Set environment variable
+export SAMSARA_API_TOKEN=your_samsara_api_token_here
+
+
