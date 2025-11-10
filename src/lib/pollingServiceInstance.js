@@ -17,11 +17,13 @@ let changeDetectionInstance = null;
 function getPollingService() {
   if (!pollingServiceInstance) {
     // Initialize cache service
+    // Disable disk persistence in Vercel (serverless environment)
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
     cacheServiceInstance = new CacheService({
       dbPath: process.env.CACHE_DB_PATH || './data/cache.db',
       ttl: parseInt(process.env.CACHE_TTL) || 300000, // 5 minutes
       maxSize: parseInt(process.env.CACHE_MAX_SIZE) || 1000,
-      persistToDisk: process.env.CACHE_PERSIST !== 'false'
+      persistToDisk: !isVercel && process.env.CACHE_PERSIST !== 'false'
     });
 
     // Initialize change detection service

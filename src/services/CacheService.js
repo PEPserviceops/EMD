@@ -3,9 +3,17 @@
  * In-memory cache with SQLite persistence for job data
  */
 
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+
+// Try to load better-sqlite3, but don't fail if it's not available (e.g., in Vercel)
+let Database;
+try {
+  Database = require('better-sqlite3');
+} catch (error) {
+  console.warn('⚠️  better-sqlite3 not available. Cache will run in memory-only mode.');
+  Database = null;
+}
 
 class CacheService {
   constructor(config = {}) {
@@ -13,7 +21,7 @@ class CacheService {
       dbPath: config.dbPath || path.join(process.cwd(), 'data', 'cache.db'),
       ttl: config.ttl || 300000, // 5 minutes default TTL
       maxSize: config.maxSize || 1000,
-      persistToDisk: config.persistToDisk !== false,
+      persistToDisk: config.persistToDisk !== false && Database !== null,
       ...config
     };
 
@@ -24,6 +32,8 @@ class CacheService {
     // Initialize database
     if (this.config.persistToDisk) {
       this.initDatabase();
+    } else if (config.persistToDisk !== false && Database === null) {
+      console.warn('⚠️  CacheService: Running in memory-only mode (SQLite not available)');
     }
   }
 
