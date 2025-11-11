@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "build": "echo 'No build required for Node.js server'",
     "test:polling": "node test-polling-service.js"
   },
   "keywords": ["filemaker", "polling", "supabase"],
