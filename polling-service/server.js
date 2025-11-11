@@ -137,7 +137,7 @@ async function storeJobSnapshots(jobs) {
       job_id: job.fieldData?._kp_job_id || '',
       record_id: job.recordId || '',
       mod_id: job.modId || '',
-      job_date: job.fieldData?.job_date || null,
+      job_date: job.fieldData?.job_date || new Date().toISOString().split('T')[0], // Use today's date as default
       job_status: job.fieldData?.job_status || '',
       job_type: job.fieldData?.job_type || '',
       truck_id: job.fieldData?._kf_trucks_id || null,
