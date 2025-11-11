@@ -7,10 +7,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import AlertCard from './AlertCard';
 import PredictiveAnalytics from './PredictiveAnalytics';
 import RouteOptimization from './RouteOptimization';
-import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3, Navigation } from 'lucide-react';
+import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3, Navigation, MapPin, Truck, Zap } from 'lucide-react';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'predictions', or 'route-optimization'
+  const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'predictions', 'route-optimization', or 'gps-verification'
   const [alerts, setAlerts] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -27,12 +27,25 @@ export default function Dashboard() {
   const previousAlertCount = useRef(0);
   const audioRef = useRef(null);
 
+  // GPS Verification State
+  const [gpsStatus, setGpsStatus] = useState(null);
+  const [gpsMapping, setGpsMapping] = useState(null);
+  const [isGpsLoading, setIsGpsLoading] = useState(false);
+  const [lastGpsUpdate, setLastGpsUpdate] = useState(null);
+
   // Fetch alerts from API
   useEffect(() => {
     fetchAlerts();
     const interval = setInterval(fetchAlerts, 30000); // Poll every 30 seconds
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch GPS verification data
+  useEffect(() => {
+    if (activeTab === 'gps-verification') {
+      fetchGpsData();
+    }
+  }, [activeTab]);
 
   // Play sound for new high-priority alerts
   useEffect(() => {
@@ -67,6 +80,50 @@ export default function Dashboard() {
       setApiStatus('Error');
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  // Fetch GPS verification data
+  const fetchGpsData = async () => {
+    setIsGpsLoading(true);
+    try {
+      // Fetch GPS status
+      const statusResponse = await fetch('/api/fleet/gps-status');
+      const statusData = await statusResponse.json();
+      setGpsStatus(statusData);
+
+      // Fetch truck mapping
+      const mappingResponse = await fetch('/api/fleet/truck-mapping');
+      const mappingData = await mappingResponse.json();
+      setGpsMapping(mappingData);
+
+      setLastGpsUpdate(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Error fetching GPS data:', error);
+    } finally {
+      setIsGpsLoading(false);
+    }
+  };
+
+  // Manual GPS sync
+  const triggerGpsSync = async () => {
+    setIsGpsLoading(true);
+    try {
+      const response = await fetch('/api/fleet/sync-gps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        // Refresh GPS data after sync
+        setTimeout(fetchGpsData, 2000);
+      }
+    } catch (error) {
+      console.error('Error triggering GPS sync:', error);
+    } finally {
+      setIsGpsLoading(false);
     }
   };
 
@@ -171,7 +228,7 @@ export default function Dashboard() {
       {/* Enhanced Navigation Tabs */}
       <div className="max-w-7xl mx-auto px-8 pt-6">
         <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <button
               onClick={() => setActiveTab('alerts')}
               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
@@ -213,6 +270,19 @@ export default function Dashboard() {
               <Navigation size={20} />
               <span>Route Optimization</span>
               <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('gps-verification')}
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'gps-verification'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <MapPin size={20} />
+              <span>GPS Verification</span>
+              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
             </button>
           </div>
         </div>
@@ -366,8 +436,17 @@ export default function Dashboard() {
           </div>
         ) : activeTab === 'predictions' ? (
           <PredictiveAnalytics />
-        ) : (
+        ) : activeTab === 'route-optimization' ? (
           <RouteOptimization />
+        ) : (
+          <GpsVerificationPanel 
+            gpsStatus={gpsStatus}
+            gpsMapping={gpsMapping}
+            isGpsLoading={isGpsLoading}
+            lastGpsUpdate={lastGpsUpdate}
+            onRefresh={fetchGpsData}
+            onSync={triggerGpsSync}
+          />
         )}
       </div>
 
@@ -375,6 +454,291 @@ export default function Dashboard() {
       <audio ref={audioRef} preload="auto">
         <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS57OihUBELTKXh8bllHAU2jdXvzn0vBSh+zPDajzsKElyx6OyrWBUIQ5zd8sFuJAUuhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvs6KFQEQtMpeHxuWUcBTeN1e/OfS8FKH7M8NqPOwsSXLHo7atYFQhDnN3ywW4kBS+Ez/PbiTYGHGq77OihUBELTKXh8bllHAU3jdXvzn0vBSh+zPDajzsKElyx6O2rWBUIQ5zd8sFuJAUvhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvs6KFQEQtMpeHxuWUcBTeN1e/OfS8FKH7M8NqPOwsSXLHo7atYFQhDnN3ywW4kBS+Ez/PbiTYGHGq77OihUBELTKXh8bllHAU3jdXvzn0vBSh+zPDajzsKElyx6O2rWBUIQ5zd8sFuJAUvhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvs6KFQEQtMpeHxuWUcBTeN1e/OfS8FKH7M8NqPOwsSXLHo7atYFQhDnN3ywW4kBS+Ez/PbiTYGHGq77OihUBELTKXh8bllHAU3jdXvzn0vBSh+zPDajzsKElyx6O2rWBUIQ5zd8sFuJAUvhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvsA==" type="audio/wav" />
       </audio>
+    </div>
+  );
+}
+
+// GPS Verification Panel Component
+function GpsVerificationPanel({ gpsStatus, gpsMapping, isGpsLoading, lastGpsUpdate, onRefresh, onSync }) {
+  const status = gpsStatus?.gpsStatus;
+  const mapping = gpsMapping?.truckMapping;
+  const serviceInfo = gpsStatus?.serviceInfo;
+
+  if (isGpsLoading) {
+    return (
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-16 text-center">
+        <div className="animate-spin w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-6"></div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Loading GPS Verification Data...</h3>
+        <p className="text-slate-600">Fetching fleet locations and verification status</p>
+      </div>
+    );
+  }
+
+  if (!serviceInfo?.enabled) {
+    return (
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-16 text-center">
+        <div className="bg-gradient-to-br from-orange-100 to-yellow-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <MapPin className="text-orange-600" size={40} />
+        </div>
+        <h3 className="text-2xl font-bold text-slate-900 mb-3">
+          GPS Verification Not Configured
+        </h3>
+        <p className="text-slate-600 text-lg mb-6">
+          Configure SAMSARA_API_KEY in environment variables to enable GPS verification.
+        </p>
+        <div className="bg-slate-50 rounded-lg p-4 text-left max-w-md mx-auto">
+          <h4 className="font-bold text-slate-900 mb-2">Required Configuration:</h4>
+          <code className="text-sm text-slate-700">SAMSARA_API_KEY=your_api_key_here</code>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header with Actions */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">GPS Verification System</h2>
+          <p className="text-slate-600">
+            Real-time truck location verification against scheduled jobs
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onRefresh}
+            disabled={isGpsLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 shadow-sm transition-all"
+          >
+            <RefreshCw size={18} className={isGpsLoading ? 'animate-spin' : ''} />
+            <span className="text-sm font-medium">Refresh</span>
+          </button>
+          <button
+            onClick={onSync}
+            disabled={isGpsLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl hover:from-cyan-700 hover:to-blue-700 shadow-lg transition-all"
+          >
+            <Zap size={18} />
+            <span className="text-sm font-medium">Sync GPS</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Status Overview */}
+      {status && (
+        <div className="grid grid-cols-4 gap-5">
+          <GpsStatCard
+            title="Total Trucks"
+            value={status.totalTrucks}
+            icon={Truck}
+            color="blue"
+          />
+          <GpsStatCard
+            title="With GPS"
+            value={status.trucksWithGps}
+            icon={MapPin}
+            color="green"
+          />
+          <GpsStatCard
+            title="Active"
+            value={status.activeTrucks}
+            icon={Activity}
+            color="purple"
+          />
+          <GpsStatCard
+            title="Idle"
+            value={status.idleTrucks}
+            icon={Clock}
+            color="orange"
+          />
+        </div>
+      )}
+
+      {/* Service Information */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <MapPin size={20} className="text-cyan-600" />
+          GPS Integration Status
+        </h3>
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-3 h-3 rounded-full ${serviceInfo.enabled ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="font-medium text-slate-700">Service Enabled</span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-3 h-3 rounded-full ${serviceInfo.apiConfigured ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="font-medium text-slate-700">API Configured</span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+              <span className="font-medium text-slate-700">Mappings: {serviceInfo.truckMappings}</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-slate-600 mb-1">Last GPS Update</p>
+            <p className="font-medium text-slate-900">{lastGpsUpdate || 'Never'}</p>
+            <p className="text-xs text-slate-500 mt-1">
+              Cache size: {serviceInfo.cacheSize} locations
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Truck Details */}
+      {status?.trucks && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+          <div className="p-6 border-b border-slate-200">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Truck size={20} className="text-cyan-600" />
+              Fleet GPS Status ({status.trucks.length} trucks)
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left p-4 font-semibold text-slate-900">Truck ID</th>
+                  <th className="text-left p-4 font-semibold text-slate-900">Status</th>
+                  <th className="text-left p-4 font-semibold text-slate-900">GPS Coverage</th>
+                  <th className="text-left p-4 font-semibold text-slate-900">Location</th>
+                  <th className="text-left p-4 font-semibold text-slate-900">Last Update</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {status.trucks.map((truck) => (
+                  <tr key={truck.truckId} className="hover:bg-slate-50">
+                    <td className="p-4 font-medium text-slate-900">{truck.truckId}</td>
+                    <td className="p-4">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        truck.status === 'active' 
+                          ? 'bg-green-100 text-green-800'
+                          : truck.status === 'idle'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : truck.status === 'no_mapping'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {truck.status === 'active' && <Activity size={12} className="mr-1" />}
+                        {truck.status === 'idle' && <Clock size={12} className="mr-1" />}
+                        {truck.status}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      {truck.samsaraId ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <MapPin size={12} className="mr-1" />
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          Not Mapped
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4 text-sm text-slate-600">
+                      {truck.location ? (
+                        <div>
+                          <div>{truck.location.latitude?.toFixed(4)}, {truck.location.longitude?.toFixed(4)}</div>
+                          {truck.location.speed !== undefined && (
+                            <div className="text-xs text-slate-500">{truck.location.speed} mph</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">No location data</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-sm text-slate-600">
+                      {truck.lastUpdate ? new Date(truck.lastUpdate).toLocaleTimeString() : 'Never'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Truck Mapping */}
+      {mapping && Object.keys(mapping).length > 0 && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+          <div className="p-6 border-b border-slate-200">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Truck size={20} className="text-cyan-600" />
+              Truck ID Mappings
+            </h3>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(mapping).map(([fileMakerId, samsaraId]) => (
+                <div key={fileMakerId} className="bg-slate-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-slate-900">{fileMakerId}</span>
+                    {samsaraId ? (
+                      <MapPin size={16} className="text-green-600" />
+                    ) : (
+                      <MapPin size={16} className="text-red-400" />
+                    )}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    <div>Samsara ID: {samsaraId || 'Not mapped'}</div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {samsaraId ? 'Ready for GPS tracking' : 'No Samsara tracking'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Messages */}
+      {gpsStatus?.error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="text-red-600" size={20} />
+            <span className="font-medium text-red-900">GPS Status Error</span>
+          </div>
+          <p className="text-red-700 mt-1">{gpsStatus.error}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// GPS Stat Card Component
+function GpsStatCard({ title, value, icon: Icon, color }) {
+  const colorClasses = {
+    blue: {
+      bg: 'from-blue-500 to-cyan-600',
+      shadow: 'shadow-blue-500/30'
+    },
+    green: {
+      bg: 'from-green-500 to-emerald-600',
+      shadow: 'shadow-green-500/30'
+    },
+    purple: {
+      bg: 'from-purple-500 to-indigo-600',
+      shadow: 'shadow-purple-500/30'
+    },
+    orange: {
+      bg: 'from-orange-500 to-red-500',
+      shadow: 'shadow-orange-500/30'
+    }
+  };
+
+  const config = colorClasses[color];
+
+  return (
+    <div className={`bg-gradient-to-br ${config.bg} text-white rounded-2xl p-6 shadow-lg ${config.shadow} backdrop-blur-sm border border-white/20`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl shadow-lg">
+          <Icon size={24} strokeWidth={2.5} />
+        </div>
+        <span className="text-4xl font-black drop-shadow-lg">{value}</span>
+      </div>
+      <p className="text-sm font-bold uppercase tracking-wider opacity-90">{title}</p>
     </div>
   );
 }

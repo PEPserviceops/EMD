@@ -107,6 +107,89 @@ const alertRules = [
       return fieldData.job_status === 'Re-scheduled';
     },
     message: (job) => `Job ${job.fieldData._kp_job_id} has been rescheduled - verify new schedule`
+  },
+  {
+    id: 'gps-location-mismatch',
+    name: 'GPS Location Mismatch',
+    severity: SEVERITY.HIGH,
+    evaluate: (job, gpsVerification) => {
+      try {
+        // If GPS verification is not available or has no results, skip
+        if (!gpsVerification || !gpsVerification.success || !gpsVerification.results) return false;
+        
+        // Check if we have job-specific verification results
+        if (!gpsVerification.results.resultsByJobId) return false;
+        
+        const verificationResult = gpsVerification.results.resultsByJobId[job.recordId];
+        if (!verificationResult) return false;
+        
+        return verificationResult.verificationStatus === 'off_schedule';
+      } catch (error) {
+        console.warn(`GPS location mismatch evaluation error for job ${job.recordId}:`, error.message);
+        return false;
+      }
+    },
+    message: (job, gpsVerification) => {
+      const verificationResult = gpsVerification?.results?.resultsByJobId?.[job.recordId];
+      const distance = verificationResult?.distance || 0;
+      return `Job ${job.fieldData._kp_job_id}: Truck ${verificationResult?.truckId} is ${distance} miles from scheduled location`;
+    }
+  },
+  {
+    id: 'gps-no-tracking',
+    name: 'No GPS Tracking Available',
+    severity: SEVERITY.MEDIUM,
+    evaluate: (job, gpsVerification) => {
+      try {
+        if (!gpsVerification || !gpsVerification.success) return false;
+        
+        // GPS verification data may not be available for all jobs
+        // If no results or job not in results, assume no tracking available
+        const verificationResult = gpsVerification.results?.resultsByJobId?.[job.recordId];
+        
+        // If we have specific result data, use it
+        if (verificationResult) {
+          return verificationResult.verificationStatus === 'unknown' &&
+                 verificationResult.hasSamsaraTracking === false;
+        }
+        
+        // If no specific result but GPS service is working, 
+        // assume truck is not in Samsara system
+        return true;
+      } catch (error) {
+        console.warn(`GPS no-tracking evaluation error for job ${job.recordId}:`, error.message);
+        return false;
+      }
+    },
+    message: (job, gpsVerification) => `Job ${job.fieldData._kp_job_id}: No GPS tracking available for truck (not in Samsara)`
+  },
+  {
+    id: 'gps-data-unavailable',
+    name: 'GPS Data Unavailable',
+    severity: SEVERITY.MEDIUM,
+    evaluate: (job, gpsVerification) => {
+      try {
+        // If GPS verification is not available or has no results, skip
+        if (!gpsVerification || !gpsVerification.success || !gpsVerification.results) return false;
+        
+        // Check if we have job-specific verification results
+        if (!gpsVerification.results.resultsByJobId) return false;
+        
+        const verificationResult = gpsVerification.results.resultsByJobId[job.recordId];
+        if (!verificationResult) return false;
+        
+        return verificationResult.verificationStatus === 'unknown' &&
+               verificationResult.hasSamsaraTracking === true;
+      } catch (error) {
+        console.warn(`GPS data unavailable evaluation error for job ${job.recordId}:`, error.message);
+        return false;
+      }
+    },
+    message: (job, gpsVerification) => {
+      const verificationResult = gpsVerification?.results?.resultsByJobId?.[job.recordId];
+      const truckId = verificationResult?.truckId;
+      return `Job ${job.fieldData._kp_job_id}: GPS data unavailable for truck ${truckId}`;
+    }
   }
 ];
 
@@ -261,14 +344,16 @@ class AlertEngine {
   /**
    * Evaluate a single job against all rules
    * @param {Object} job - Job record from FileMaker
+   * @param {Object} gpsVerification - GPS verification data
    * @returns {Array} Array of triggered alerts
    */
-  evaluateJob(job) {
+  evaluateJob(job, gpsVerification = null) {
     const alerts = [];
 
     for (const rule of this.rules) {
       try {
-        if (rule.evaluate(job)) {
+        // Pass GPS verification data to rule evaluation
+        if (rule.evaluate(job, gpsVerification)) {
           const jobId = job.fieldData?._kp_job_id || job.recordId;
           const fingerprint = this._generateFingerprint(rule.id, jobId);
 
@@ -282,7 +367,7 @@ class AlertEngine {
             ruleId: rule.id,
             ruleName: rule.name,
             severity: rule.severity,
-            message: rule.message(job),
+            message: rule.message(job, gpsVerification),
             jobId: jobId,
             recordId: job.recordId,
             timestamp: new Date().toISOString(),
@@ -304,9 +389,10 @@ class AlertEngine {
   /**
    * Evaluate multiple jobs and update active alerts
    * @param {Array} jobs - Array of job records
+   * @param {Object} gpsVerification - GPS verification results
    * @returns {Object} Alert summary
    */
-  evaluateJobs(jobs) {
+  evaluateJobs(jobs, gpsVerification = null) {
     const newAlerts = [];
     const currentAlertIds = new Set();
 
@@ -315,7 +401,7 @@ class AlertEngine {
 
     // Evaluate all jobs
     for (const job of jobs) {
-      const jobAlerts = this.evaluateJob(job);
+      const jobAlerts = this.evaluateJob(job, gpsVerification);
       for (const alert of jobAlerts) {
         currentAlertIds.add(alert.id);
 
