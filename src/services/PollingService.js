@@ -7,6 +7,7 @@
 const { FileMakerAPI } = require('../api/filemaker');
 const { AlertEngine } = require('../api/alerts');
 const supabaseService = require('./SupabaseService');
+const samsaraService = require('./SamsaraIntegrationService');
 const EventEmitter = require('events');
 
 class PollingService extends EventEmitter {
@@ -113,6 +114,33 @@ class PollingService extends EventEmitter {
 
       console.log(`[Poll #${this.pollCount}] Retrieved ${activeJobs.length} active jobs (${jobs.length} total)`);
 
+      // GPS Verification Step (if Samsara integration is enabled)
+      let gpsVerificationResult = null;
+      if (samsaraService.isEnabled() && activeJobs.length > 0) {
+        try {
+          gpsVerificationResult = await samsaraService.verifyJobs(activeJobs);
+          console.log(`[Poll #${this.pollCount}] GPS verification complete: ${gpsVerificationResult.results.summary.verified} verified, ${gpsVerificationResult.results.summary.offSchedule} off-schedule`);
+          
+          // Store GPS verification results in Supabase
+          if (supabaseService.isEnabled()) {
+            try {
+              await supabaseService.storeSystemMetric({
+                type: 'gps_verification',
+                name: 'verification_cycle_complete',
+                value: gpsVerificationResult.results.summary.total,
+                unit: 'jobs',
+                component: 'gps_verification',
+                metadata: gpsVerificationResult.results.summary
+              });
+            } catch (error) {
+              console.error(`[Poll #${this.pollCount}] Failed to store GPS verification metrics:`, error.message);
+            }
+          }
+        } catch (error) {
+          console.error(`[Poll #${this.pollCount}] GPS verification failed:`, error.message);
+        }
+      }
+
       // Store job snapshots in Supabase for historical analysis
       if (supabaseService.isEnabled() && activeJobs.length > 0) {
         try {
@@ -124,8 +152,8 @@ class PollingService extends EventEmitter {
         }
       }
 
-      // Evaluate jobs against alert rules
-      const alertResult = this.alertEngine.evaluateJobs(activeJobs);
+      // Evaluate jobs against alert rules (include GPS verification data)
+      const alertResult = this.alertEngine.evaluateJobs(activeJobs, gpsVerificationResult);
 
       // Update statistics
       const responseTime = Date.now() - startTime;
@@ -189,6 +217,7 @@ class PollingService extends EventEmitter {
         success: true,
         jobs: activeJobs,
         alertResult,
+        gpsVerification: gpsVerificationResult,
         responseTime
       };
 

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-11T02:16:04.355Z",
+  "timestamp": "2025-11-11T21:45:11.144Z",
   "services": {
     "FileMaker": [
       {
@@ -17,7 +17,7 @@
           "rateLimited": false
         },
         "errors": [],
-        "timestamp": "2025-11-11T02:16:08.431Z"
+        "timestamp": "2025-11-11T21:45:11.522Z"
       }
     ],
     "OpenRouter": [
@@ -34,7 +34,7 @@
           "rateLimited": false
         },
         "errors": [],
-        "timestamp": "2025-11-11T02:16:10.048Z"
+        "timestamp": "2025-11-11T21:45:11.938Z"
       }
     ],
     "Supabase": [
@@ -48,40 +48,40 @@
         },
         "connection": true,
         "errors": [],
-        "timestamp": "2025-11-11T02:16:11.578Z"
+        "timestamp": "2025-11-11T21:45:13.225Z"
       }
     ],
     "PredictiveAnalytics": [
       {
         "endpoint": "Service Status",
         "status": 200,
-        "responseTime": "395ms",
+        "responseTime": "274ms",
         "dataStructure": {
           "hasSuccess": true,
           "hasService": true,
           "structureValid": true
         },
         "latency": "GOOD",
-        "timestamp": "2025-11-11T02:16:11.974Z"
+        "timestamp": "2025-11-11T21:45:13.499Z"
       },
       {
         "endpoint": "Model Management",
         "status": 200,
-        "responseTime": "12ms",
+        "responseTime": "9ms",
         "dataStructure": {
           "hasSuccess": true,
           "hasService": false,
           "structureValid": true
         },
         "latency": "GOOD",
-        "timestamp": "2025-11-11T02:16:11.986Z"
+        "timestamp": "2025-11-11T21:45:13.508Z"
       },
       {
         "endpoint": "Prediction History",
         "status": "ERROR",
         "error": "Request failed with status code 500",
         "timeout": false,
-        "timestamp": "2025-11-11T02:16:11.997Z"
+        "timestamp": "2025-11-11T21:45:13.522Z"
       }
     ],
     "AlertSystem": [
@@ -90,17 +90,17 @@
         "endpointStructure": "VALID",
         "note": "Test alert not found (expected)",
         "responseTime": "N/A",
-        "timestamp": "2025-11-11T02:16:12.535Z"
+        "timestamp": "2025-11-11T21:45:13.945Z"
       }
     ],
     "RealTimeStreaming": [
       {
         "status": "FUNCTIONAL",
         "pollCount": 4,
-        "totalTime": 4030,
-        "averageInterval": "1008ms",
+        "totalTime": 4008,
+        "averageInterval": "1002ms",
         "workingInterval": true,
-        "timestamp": "2025-11-11T02:16:16.565Z"
+        "timestamp": "2025-11-11T21:45:17.953Z"
       }
     ],
     "Authentication": [
@@ -109,14 +109,14 @@
         "status": 200,
         "accessible": true,
         "authenticationRequired": false,
-        "timestamp": "2025-11-11T02:16:18.321Z"
+        "timestamp": "2025-11-11T21:45:19.689Z"
       },
       {
         "endpoint": "Protected API",
         "status": 400,
         "accessible": false,
         "authenticationRequired": false,
-        "timestamp": "2025-11-11T02:16:18.343Z"
+        "timestamp": "2025-11-11T21:45:19.704Z"
       }
     ],
     "DataStructures": [
@@ -129,33 +129,33 @@
         },
         "structureValid": true,
         "sampleAlertKeys": [],
-        "timestamp": "2025-11-11T02:16:18.360Z"
+        "timestamp": "2025-11-11T21:45:19.713Z"
       }
     ],
     "LatencyPerformance": [
       {
         "endpoint": "Alerts",
-        "averageLatency": "13ms",
+        "averageLatency": "8ms",
         "consistency": "CONSISTENT",
         "status": "GOOD",
         "measurements": [
-          16,
-          13,
-          9
+          7,
+          8,
+          8
         ],
-        "timestamp": "2025-11-11T02:16:18.398Z"
+        "timestamp": "2025-11-11T21:45:19.737Z"
       },
       {
         "endpoint": "Predictive Status",
-        "averageLatency": "9ms",
+        "averageLatency": "8ms",
         "consistency": "CONSISTENT",
         "status": "GOOD",
         "measurements": [
-          9,
-          9,
-          8
+          7,
+          7,
+          9
         ],
-        "timestamp": "2025-11-11T02:16:18.424Z"
+        "timestamp": "2025-11-11T21:45:19.760Z"
       }
     ]
   },
