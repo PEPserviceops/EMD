@@ -30,19 +30,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check if Supabase is enabled
-    if (!supabaseService.isEnabled()) {
-      return res.status(503).json({
-        error: 'Supabase not configured',
-        message: 'Historical job data is not available'
-      });
-    }
-
-    // Get query parameters
+    // Get query parameters first
     const { date, driver, truck, groupBy = 'driver' } = req.query;
-
+    
     // Default to today if no date provided
     const targetDate = date || new Date().toISOString().split('T')[0];
+
+    // Check if Supabase is enabled
+    if (!supabaseService.isEnabled()) {
+      return res.status(200).json({
+        success: true,
+        date: targetDate,
+        totalJobs: 0,
+        groupedBy: groupBy,
+        groups: {},
+        jobs: [],
+        metadata: {
+          drivers: [],
+          trucks: [],
+          statuses: []
+        },
+        fallback: true,
+        message: 'Historical job data is not available - Supabase service disabled',
+        timestamp: new Date().toISOString()
+      });
+    }
 
     console.log(`[Scheduled Jobs API] Fetching jobs for date: ${targetDate}`);
 
