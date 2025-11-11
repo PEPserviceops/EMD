@@ -1,13 +1,15 @@
 /**
- * Dashboard Component
- * Main dashboard view for Exception Management Dashboard
+ * Enhanced Dashboard Component with Predictive Analytics
+ * Main dashboard view for Exception Management Dashboard with AI-powered insights
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import AlertCard from './AlertCard';
-import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import PredictiveAnalytics from './PredictiveAnalytics';
+import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3 } from 'lucide-react';
 
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' or 'predictions'
   const [alerts, setAlerts] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -165,155 +167,197 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Stats Bar */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        <div className="grid grid-cols-5 gap-5">
-          <StatCard
-            title="Total Alerts"
-            value={stats.total}
-            icon={AlertCircle}
-            color="blue"
-            active={filter === 'all'}
-            onClick={() => setFilter('all')}
-          />
-          <StatCard
-            title="Critical"
-            value={stats.critical}
-            icon={AlertCircle}
-            color="red"
-            active={filter === 'critical'}
-            onClick={() => setFilter('critical')}
-          />
-          <StatCard
-            title="High"
-            value={stats.high}
-            icon={AlertCircle}
-            color="orange"
-            active={filter === 'high'}
-            onClick={() => setFilter('high')}
-          />
-          <StatCard
-            title="Medium"
-            value={stats.medium}
-            icon={AlertCircle}
-            color="yellow"
-            active={filter === 'medium'}
-            onClick={() => setFilter('medium')}
-          />
-          <StatCard
-            title="Low"
-            value={stats.low}
-            icon={AlertCircle}
-            color="green"
-            active={filter === 'low'}
-            onClick={() => setFilter('low')}
-          />
+      {/* Enhanced Navigation Tabs */}
+      <div className="max-w-7xl mx-auto px-8 pt-6">
+        <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-2">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setActiveTab('alerts')}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'alerts'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <AlertCircle size={20} />
+              <span>Real-time Alerts</span>
+              {stats.total > 0 && (
+                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                  {stats.total}
+                </span>
+              )}
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('predictions')}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'predictions'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <Brain size={20} />
+              <span>AI Predictions</span>
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-8 pb-8">
-        <div className="grid grid-cols-1 gap-6">
-          {/* Critical Alerts Section */}
-          {(filter === 'all' || filter === 'critical') && criticalAlerts.length > 0 && (
-            <section>
-              <h2 className="text-xl font-bold text-red-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="drop-shadow-md" size={24} />
-                Critical Issues ({criticalAlerts.length})
-              </h2>
-              <div className="space-y-3">
-                {criticalAlerts.map(alert => (
-                  <AlertCard
-                    key={alert.id}
-                    alert={alert}
-                    onAcknowledge={handleAcknowledge}
-                    onDismiss={handleDismiss}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* High Priority Alerts */}
-          {(filter === 'all' || filter === 'high') && highAlerts.length > 0 && (
-            <section>
-              <h2 className="text-xl font-bold text-orange-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="drop-shadow-md" size={24} />
-                High Priority ({highAlerts.length})
-              </h2>
-              <div className="space-y-3">
-                {highAlerts.map(alert => (
-                  <AlertCard
-                    key={alert.id}
-                    alert={alert}
-                    onAcknowledge={handleAcknowledge}
-                    onDismiss={handleDismiss}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Medium Priority Alerts */}
-          {(filter === 'all' || filter === 'medium') && mediumAlerts.length > 0 && (
-            <section>
-              <h2 className="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="drop-shadow-md" size={24} />
-                Medium Priority ({mediumAlerts.length})
-              </h2>
-              <div className="space-y-3">
-                {mediumAlerts.map(alert => (
-                  <AlertCard
-                    key={alert.id}
-                    alert={alert}
-                    onAcknowledge={handleAcknowledge}
-                    onDismiss={handleDismiss}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Low Priority Alerts */}
-          {(filter === 'all' || filter === 'low') && lowAlerts.length > 0 && (
-            <section>
-              <h2 className="text-xl font-bold text-emerald-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="drop-shadow-md" size={24} />
-                Low Priority ({lowAlerts.length})
-              </h2>
-              <div className="space-y-3">
-                {lowAlerts.map(alert => (
-                  <AlertCard
-                    key={alert.id}
-                    alert={alert}
-                    onAcknowledge={handleAcknowledge}
-                    onDismiss={handleDismiss}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* No Alerts Message */}
-          {filteredAlerts.length === 0 && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-16 text-center">
-              <div className="bg-gradient-to-br from-emerald-100 to-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <Activity className="text-emerald-600" size={40} />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">
-                No Active Alerts
-              </h3>
-              <p className="text-slate-600 text-lg">
-                All systems are operating normally. Great job!
-              </p>
+      {/* Tab Content */}
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        {activeTab === 'alerts' ? (
+          <div className="space-y-8">
+            {/* Stats Bar */}
+            <div className="grid grid-cols-5 gap-5">
+              <StatCard
+                title="Total Alerts"
+                value={stats.total}
+                icon={AlertCircle}
+                color="blue"
+                active={filter === 'all'}
+                onClick={() => setFilter('all')}
+              />
+              <StatCard
+                title="Critical"
+                value={stats.critical}
+                icon={AlertCircle}
+                color="red"
+                active={filter === 'critical'}
+                onClick={() => setFilter('critical')}
+              />
+              <StatCard
+                title="High"
+                value={stats.high}
+                icon={AlertCircle}
+                color="orange"
+                active={filter === 'high'}
+                onClick={() => setFilter('high')}
+              />
+              <StatCard
+                title="Medium"
+                value={stats.medium}
+                icon={AlertCircle}
+                color="yellow"
+                active={filter === 'medium'}
+                onClick={() => setFilter('medium')}
+              />
+              <StatCard
+                title="Low"
+                value={stats.low}
+                icon={AlertCircle}
+                color="green"
+                active={filter === 'low'}
+                onClick={() => setFilter('low')}
+              />
             </div>
-          )}
-        </div>
+
+            {/* Alert Sections */}
+            <div className="space-y-6">
+              {/* Critical Alerts Section */}
+              {(filter === 'all' || filter === 'critical') && criticalAlerts.length > 0 && (
+                <section>
+                  <h2 className="text-xl font-bold text-red-900 mb-4 flex items-center gap-2">
+                    <AlertCircle className="drop-shadow-md" size={24} />
+                    Critical Issues ({criticalAlerts.length})
+                  </h2>
+                  <div className="space-y-3">
+                    {criticalAlerts.map(alert => (
+                      <AlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onAcknowledge={handleAcknowledge}
+                        onDismiss={handleDismiss}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* High Priority Alerts */}
+              {(filter === 'all' || filter === 'high') && highAlerts.length > 0 && (
+                <section>
+                  <h2 className="text-xl font-bold text-orange-900 mb-4 flex items-center gap-2">
+                    <AlertCircle className="drop-shadow-md" size={24} />
+                    High Priority ({highAlerts.length})
+                  </h2>
+                  <div className="space-y-3">
+                    {highAlerts.map(alert => (
+                      <AlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onAcknowledge={handleAcknowledge}
+                        onDismiss={handleDismiss}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Medium Priority Alerts */}
+              {(filter === 'all' || filter === 'medium') && mediumAlerts.length > 0 && (
+                <section>
+                  <h2 className="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
+                    <AlertCircle className="drop-shadow-md" size={24} />
+                    Medium Priority ({mediumAlerts.length})
+                  </h2>
+                  <div className="space-y-3">
+                    {mediumAlerts.map(alert => (
+                      <AlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onAcknowledge={handleAcknowledge}
+                        onDismiss={handleDismiss}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Low Priority Alerts */}
+              {(filter === 'all' || filter === 'low') && lowAlerts.length > 0 && (
+                <section>
+                  <h2 className="text-xl font-bold text-emerald-900 mb-4 flex items-center gap-2">
+                    <AlertCircle className="drop-shadow-md" size={24} />
+                    Low Priority ({lowAlerts.length})
+                  </h2>
+                  <div className="space-y-3">
+                    {lowAlerts.map(alert => (
+                      <AlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onAcknowledge={handleAcknowledge}
+                        onDismiss={handleDismiss}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* No Alerts Message */}
+              {filteredAlerts.length === 0 && (
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-16 text-center">
+                  <div className="bg-gradient-to-br from-emerald-100 to-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <Activity className="text-emerald-600" size={40} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-3">
+                    No Active Alerts
+                  </h3>
+                  <p className="text-slate-600 text-lg">
+                    All systems are operating normally. Great job!
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <PredictiveAnalytics />
+        )}
       </div>
 
       {/* Audio element for alert notifications */}
       <audio ref={audioRef} preload="auto">
-        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS57OihUBELTKXh8bllHAU2jdXvzn0vBSh+zPDajzsKElyx6OyrWBUIQ5zd8sFuJAUuhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvs6KFQEQtMpeHxuWUcBTeN1e/OfS8FKH7M8NqPOwsSXLHo7atYFQhDnN3ywW4kBS+Ez/PbiTYGHGq77OihUBELTKXh8bllHAU3jdXvzn0vBSh+zPDajzsKElyx6O2rWBUIQ5zd8sFuJAUvhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvs6KFQEQtMpeHxuWUcBTeN1e/OfS8FKH7M8NqPOwsSXLHo7atYFQhDnN3ywW4kBS+Ez/PbiTYGHGq77OihUBELTKXh8bllHAU3jdXvzn0vBSh+zPDajzsKElyx6O2rWBUIQ5zd8sFuJAUvhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvsA==" type="audio/wav" />
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS57OihUBELTKXh8bllHAU2jdXvzn0vBSh+zPDajzsKElyx6OyrWBUIQ5zd8sFuJAUuhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvs6KFQEQtMpeHxuWUcBTeN1e/OfS8FKH7M8NqPOwsSXLHo7atYFQhDnN3ywW4kBS+Ez/PbiTYGHGq77OihUBELTKXh8bllHAU3jdXvzn0vBSh+zPDajzsKElyx6O2rWBUIQ5zd8sFuJAUvhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvs6KFQEQtMpeHxuWUcBTeN1e/OfS8FKH7M8NqPOwsSXLHo7atYFQhDnN3ywW4kBS+Ez/PbiTYGHGq77OihUBELTKXh8bllHAU3jdXvzn0vBSh+zPDajzsKElyx6O2rWBUIQ5zd8sFuJAUvhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvs6KFQEQtMpeHxuWUcBTeN1e/OfS8FKH7M8NqPOwsSXLHo7atYFQhDnN3ywW4kBS+Ez/PbiTYGHGq77OihUBELTKXh8bllHAU3jdXvzn0vBSh+zPDajzsKElyx6O2rWBUIQ5zd8sFuJAUvhM/z24k2Bhxqu+zooVARC0yl4fG5ZRwFN43V7859LwUofszw2o87ChJcsejtq1gVCEOc3fLBbiQFL4TP89uJNgYcarvsA==" type="audio/wav" />
       </audio>
     </div>
   );
@@ -367,4 +411,3 @@ function StatCard({ title, value, icon: Icon, color, active, onClick }) {
     </button>
   );
 }
-
