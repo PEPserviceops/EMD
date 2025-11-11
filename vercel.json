@@ -4,5 +4,11 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/polling/cron",
+      "schedule": "*/1 * * * *"
+    }
+  ]
 }
