@@ -6,10 +6,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AlertCard from './AlertCard';
 import PredictiveAnalytics from './PredictiveAnalytics';
-import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3 } from 'lucide-react';
+import RouteOptimization from './RouteOptimization';
+import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3, Navigation } from 'lucide-react';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' or 'predictions'
+  const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'predictions', or 'route-optimization'
   const [alerts, setAlerts] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -170,10 +171,10 @@ export default function Dashboard() {
       {/* Enhanced Navigation Tabs */}
       <div className="max-w-7xl mx-auto px-8 pt-6">
         <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-2">
-          <div className="flex space-x-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setActiveTab('alerts')}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'alerts'
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
                   : 'text-slate-600 hover:bg-white/50'
@@ -190,7 +191,7 @@ export default function Dashboard() {
             
             <button
               onClick={() => setActiveTab('predictions')}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'predictions'
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
                   : 'text-slate-600 hover:bg-white/50'
@@ -199,6 +200,19 @@ export default function Dashboard() {
               <Brain size={20} />
               <span>AI Predictions</span>
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('route-optimization')}
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'route-optimization'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <Navigation size={20} />
+              <span>Route Optimization</span>
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
             </button>
           </div>
         </div>
@@ -350,8 +364,10 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'predictions' ? (
           <PredictiveAnalytics />
+        ) : (
+          <RouteOptimization />
         )}
       </div>
 

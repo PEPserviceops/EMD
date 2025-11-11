@@ -1,0 +1,180 @@
+{
+  "timestamp": "2025-11-11T02:16:04.355Z",
+  "services": {
+    "FileMaker": [
+      {
+        "status": 200,
+        "responseTime": "N/A",
+        "dataStructure": {
+          "hasAlertsArray": true,
+          "hasStats": true,
+          "alertsCount": 0,
+          "structure": "VALID"
+        },
+        "authentication": {
+          "publicEndpoint": true,
+          "noAuthRequired": true,
+          "rateLimited": false
+        },
+        "errors": [],
+        "timestamp": "2025-11-11T02:16:08.431Z"
+      }
+    ],
+    "OpenRouter": [
+      {
+        "status": 200,
+        "responseTime": "Custom timeout",
+        "aiResponse": {
+          "hasResponse": true,
+          "validFormat": true,
+          "hasError": false
+        },
+        "authentication": {
+          "configured": true,
+          "rateLimited": false
+        },
+        "errors": [],
+        "timestamp": "2025-11-11T02:16:10.048Z"
+      }
+    ],
+    "Supabase": [
+      {
+        "status": 200,
+        "responseTime": "Custom timeout",
+        "dataIntegrity": {
+          "databaseConnected": true,
+          "hasData": true,
+          "properStructure": true
+        },
+        "connection": true,
+        "errors": [],
+        "timestamp": "2025-11-11T02:16:11.578Z"
+      }
+    ],
+    "PredictiveAnalytics": [
+      {
+        "endpoint": "Service Status",
+        "status": 200,
+        "responseTime": "395ms",
+        "dataStructure": {
+          "hasSuccess": true,
+          "hasService": true,
+          "structureValid": true
+        },
+        "latency": "GOOD",
+        "timestamp": "2025-11-11T02:16:11.974Z"
+      },
+      {
+        "endpoint": "Model Management",
+        "status": 200,
+        "responseTime": "12ms",
+        "dataStructure": {
+          "hasSuccess": true,
+          "hasService": false,
+          "structureValid": true
+        },
+        "latency": "GOOD",
+        "timestamp": "2025-11-11T02:16:11.986Z"
+      },
+      {
+        "endpoint": "Prediction History",
+        "status": "ERROR",
+        "error": "Request failed with status code 500",
+        "timeout": false,
+        "timestamp": "2025-11-11T02:16:11.997Z"
+      }
+    ],
+    "AlertSystem": [
+      {
+        "status": "FUNCTIONAL",
+        "endpointStructure": "VALID",
+        "note": "Test alert not found (expected)",
+        "responseTime": "N/A",
+        "timestamp": "2025-11-11T02:16:12.535Z"
+      }
+    ],
+    "RealTimeStreaming": [
+      {
+        "status": "FUNCTIONAL",
+        "pollCount": 4,
+        "totalTime": 4030,
+        "averageInterval": "1008ms",
+        "workingInterval": true,
+        "timestamp": "2025-11-11T02:16:16.565Z"
+      }
+    ],
+    "Authentication": [
+      {
+        "endpoint": "Public API",
+        "status": 200,
+        "accessible": true,
+        "authenticationRequired": false,
+        "timestamp": "2025-11-11T02:16:18.321Z"
+      },
+      {
+        "endpoint": "Protected API",
+        "status": 400,
+        "accessible": false,
+        "authenticationRequired": false,
+        "timestamp": "2025-11-11T02:16:18.343Z"
+      }
+    ],
+    "DataStructures": [
+      {
+        "validation": {
+          "hasAlerts": true,
+          "hasStats": true,
+          "alertsHaveRequiredFields": true,
+          "statsHaveRequiredFields": true
+        },
+        "structureValid": true,
+        "sampleAlertKeys": [],
+        "timestamp": "2025-11-11T02:16:18.360Z"
+      }
+    ],
+    "LatencyPerformance": [
+      {
+        "endpoint": "Alerts",
+        "averageLatency": "13ms",
+        "consistency": "CONSISTENT",
+        "status": "GOOD",
+        "measurements": [
+          16,
+          13,
+          9
+        ],
+        "timestamp": "2025-11-11T02:16:18.398Z"
+      },
+      {
+        "endpoint": "Predictive Status",
+        "averageLatency": "9ms",
+        "consistency": "CONSISTENT",
+        "status": "GOOD",
+        "measurements": [
+          9,
+          9,
+          8
+        ],
+        "timestamp": "2025-11-11T02:16:18.424Z"
+      }
+    ]
+  },
+  "summary": {
+    "total": 13,
+    "passed": 12,
+    "failed": 1,
+    "warnings": 0
+  },
+  "issues": [
+    {
+      "service": "PredictiveAnalytics",
+      "issue": "Request failed with status code 500",
+      "details": {
+        "endpoint": "Prediction History",
+        "status": "ERROR",
+        "error": "Request failed with status code 500",
+        "timeout": false
+      }
+    }
+  ]
+}
