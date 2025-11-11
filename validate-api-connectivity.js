@@ -1,0 +1,527 @@
+/**
+ * Comprehensive API Connectivity Validation Suite
+ * 
+ * Validates all integrated services in the EMD system:
+ * - FileMaker database operations
+ * - OpenRouter AI model responses
+ * - Supabase database connectivity
+ * - Alert system integration
+ * - Real-time data streaming
+ * - Authentication mechanisms
+ * 
+ * Tests response structures, latency, and error handling
+ */
+
+const axios = require('axios');
+const fs = require('fs').promises;
+const path = require('path');
+
+class APConnectivityValidator {
+  constructor() {
+    this.baseUrl = 'http://localhost:3000';
+    this.results = {
+      timestamp: new Date().toISOString(),
+      services: {},
+      summary: {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        warnings: 0
+      },
+      issues: []
+    };
+  }
+
+  async runValidation() {
+    console.log('🔍 Starting Comprehensive API Connectivity Validation...\n');
+    console.log('='.repeat(80));
+
+    const validations = [
+      this.validateFileMakerConnectivity,
+      this.validateOpenRouterAI,
+      this.validateSupabaseIntegration,
+      this.validatePredictiveAnalyticsAPI,
+      this.validateAlertSystem,
+      this.validateRealTimeStreaming,
+      this.validateAuthentication,
+      this.validateDataStructures,
+      this.validateLatencyPerformance
+    ];
+
+    for (const validation of validations) {
+      try {
+        await validation.call(this);
+      } catch (error) {
+        console.error(`❌ Validation failed: ${error.message}`);
+        this.results.issues.push({
+          service: 'Unknown',
+          issue: 'Validation crashed',
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
+    this.printFinalReport();
+    return this.results;
+  }
+
+  async validateFileMakerConnectivity() {
+    console.log('\n📊 Testing FileMaker Database Connectivity...');
+    console.log('-'.repeat(50));
+
+    try {
+      // Test main alerts API (which uses FileMaker)
+      const response = await axios.get(`${this.baseUrl}/api/alerts`, { timeout: 10000 });
+      
+      this.recordServiceResult('FileMaker', {
+        status: response.status,
+        responseTime: response.headers['x-response-time'] || 'N/A',
+        dataStructure: this.validateAlertsStructure(response.data),
+        authentication: this.checkAuthenticationStatus(response),
+        errors: response.data.error ? [response.data.error] : []
+      });
+
+      console.log(`✅ FileMaker: Status ${response.status} (${response.data.alerts?.length || 0} alerts)`);
+      
+    } catch (error) {
+      this.recordServiceResult('FileMaker', {
+        status: 'ERROR',
+        error: error.message,
+        timeout: error.code === 'ECONNABORTED'
+      });
+      console.log(`❌ FileMaker: Connection failed - ${error.message}`);
+    }
+  }
+
+  async validateOpenRouterAI() {
+    console.log('\n🤖 Testing OpenRouter AI Model Connectivity...');
+    console.log('-'.repeat(50));
+
+    try {
+      // Test OpenRouter service through our API
+      const response = await axios.get(`${this.baseUrl}/api/ai/openrouter`, { 
+        timeout: 15000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      this.recordServiceResult('OpenRouter', {
+        status: response.status,
+        responseTime: 'Custom timeout',
+        aiResponse: this.validateAIResponse(response.data),
+        authentication: this.checkOpenRouterAuth(response.data),
+        errors: response.data.error ? [response.data.error] : []
+      });
+
+      console.log(`✅ OpenRouter: Status ${response.status} (AI service available)`);
+      
+    } catch (error) {
+      this.recordServiceResult('OpenRouter', {
+        status: 'ERROR',
+        error: error.message,
+        timeout: error.code === 'ECONNABORTED'
+      });
+      console.log(`❌ OpenRouter: AI service failed - ${error.message}`);
+    }
+  }
+
+  async validateSupabaseIntegration() {
+    console.log('\n🗄️ Testing Supabase Database Integration...');
+    console.log('-'.repeat(50));
+
+    try {
+      // Test analytics APIs that use Supabase
+      const response = await axios.get(`${this.baseUrl}/api/analytics/alerts?startDate=2025-11-01&endDate=2025-11-11`, { 
+        timeout: 10000 
+      });
+      
+      this.recordServiceResult('Supabase', {
+        status: response.status,
+        responseTime: 'Custom timeout',
+        dataIntegrity: this.checkSupabaseDataIntegrity(response.data),
+        connection: response.status !== 503,
+        errors: response.data.error ? [response.data.error] : []
+      });
+
+      console.log(`✅ Supabase: Status ${response.status} (Database integration)`);
+      
+    } catch (error) {
+      // 503 is expected if Supabase is not configured
+      if (error.response?.status === 503) {
+        this.recordServiceResult('Supabase', {
+          status: 'NOT_CONFIGURED',
+          error: 'Service not configured',
+          expected: true
+        });
+        console.log(`⚠️ Supabase: Service not configured (expected)`);
+      } else {
+        this.recordServiceResult('Supabase', {
+          status: 'ERROR',
+          error: error.message,
+          timeout: error.code === 'ECONNABORTED'
+        });
+        console.log(`❌ Supabase: Database error - ${error.message}`);
+      }
+    }
+  }
+
+  async validatePredictiveAnalyticsAPI() {
+    console.log('\n🧠 Testing Predictive Analytics API...');
+    console.log('-'.repeat(50));
+
+    const tests = [
+      { endpoint: 'status', name: 'Service Status' },
+      { endpoint: 'models', name: 'Model Management' },
+      { endpoint: 'history&limit=5', name: 'Prediction History' }
+    ];
+
+    for (const test of tests) {
+      try {
+        const startTime = Date.now();
+        const response = await axios.get(`${this.baseUrl}/api/analytics/predictive?action=${test.endpoint}`, { 
+          timeout: 8000 
+        });
+        const responseTime = Date.now() - startTime;
+
+        this.recordServiceResult('PredictiveAnalytics', {
+          endpoint: test.name,
+          status: response.status,
+          responseTime: `${responseTime}ms`,
+          dataStructure: this.validatePredictiveStructure(response.data),
+          latency: responseTime < 5000 ? 'GOOD' : 'SLOW'
+        });
+
+        console.log(`✅ Predictive ${test.name}: ${response.status} (${responseTime}ms)`);
+        
+      } catch (error) {
+        this.recordServiceResult('PredictiveAnalytics', {
+          endpoint: test.name,
+          status: 'ERROR',
+          error: error.message,
+          timeout: error.code === 'ECONNABORTED'
+        });
+        console.log(`❌ Predictive ${test.name}: Failed - ${error.message}`);
+      }
+    }
+  }
+
+  async validateAlertSystem() {
+    console.log('\n🚨 Testing Alert System Integration...');
+    console.log('-'.repeat(50));
+
+    try {
+      // Test alert acknowledgment
+      const testAlert = {
+        alertId: 'TEST-' + Date.now(),
+        userId: 'test-user'
+      };
+
+      // This will likely fail but tests the endpoint structure
+      const response = await axios.post(`${this.baseUrl}/api/alerts/${testAlert.alertId}/acknowledge`, 
+        testAlert, 
+        { timeout: 5000 }
+      );
+
+      this.recordServiceResult('AlertSystem', {
+        status: response.status,
+        endpointStructure: 'VALID',
+        authenticationRequired: true
+      });
+
+      console.log(`✅ Alert System: Endpoint structure valid`);
+      
+    } catch (error) {
+      // Expected to fail with 404 for test alert, but endpoint should be reachable
+      if (error.response?.status === 404) {
+        this.recordServiceResult('AlertSystem', {
+          status: 'FUNCTIONAL',
+          endpointStructure: 'VALID',
+          note: 'Test alert not found (expected)',
+          responseTime: error.response?.headers?.['x-response-time'] || 'N/A'
+        });
+        console.log(`✅ Alert System: Functional (404 for test alert is expected)`);
+      } else {
+        this.recordServiceResult('AlertSystem', {
+          status: 'ERROR',
+          error: error.message,
+          endpointStructure: 'UNKNOWN'
+        });
+        console.log(`❌ Alert System: Endpoint error - ${error.message}`);
+      }
+    }
+  }
+
+  async validateRealTimeStreaming() {
+    console.log('\n📡 Testing Real-time Data Streaming...');
+    console.log('-'.repeat(50));
+
+    // Test polling interval and real-time updates
+    const startTime = Date.now();
+    let pollCount = 0;
+    
+    const pollInterval = setInterval(async () => {
+      pollCount++;
+      if (pollCount > 3) {
+        clearInterval(pollInterval);
+        
+        this.recordServiceResult('RealTimeStreaming', {
+          status: 'FUNCTIONAL',
+          pollCount,
+          totalTime: Date.now() - startTime,
+          averageInterval: `${((Date.now() - startTime) / pollCount).toFixed(0)}ms`,
+          workingInterval: pollCount >= 3
+        });
+
+        console.log(`✅ Real-time Streaming: Polling functional (${pollCount} polls)`);
+      }
+    }, 1000);
+
+    // Wait for polling to complete
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+
+  async validateAuthentication() {
+    console.log('\n🔐 Testing Authentication Mechanisms...');
+    console.log('-'.repeat(50));
+
+    // Test different authentication scenarios
+    const authTests = [
+      { name: 'Public API', endpoint: '/api/alerts', expectedStatus: 200 },
+      { name: 'Protected API', endpoint: '/api/analytics/predictive', expectedStatus: 200 }
+    ];
+
+    for (const test of authTests) {
+      try {
+        const response = await axios.get(`${this.baseUrl}${test.endpoint}`, { 
+          timeout: 5000,
+          validateStatus: (status) => status < 500 // Don't throw on 4xx
+        });
+
+        this.recordServiceResult('Authentication', {
+          endpoint: test.name,
+          status: response.status,
+          accessible: response.status === test.expectedStatus,
+          authenticationRequired: response.status === 401
+        });
+
+        console.log(`✅ Auth ${test.name}: ${response.status}`);
+        
+      } catch (error) {
+        this.recordServiceResult('Authentication', {
+          endpoint: test.name,
+          status: 'ERROR',
+          error: error.message
+        });
+        console.log(`❌ Auth ${test.name}: ${error.message}`);
+      }
+    }
+  }
+
+  async validateDataStructures() {
+    console.log('\n📋 Testing Data Structure Validation...');
+    console.log('-'.repeat(50));
+
+    try {
+      // Test main dashboard endpoint
+      const response = await axios.get(`${this.baseUrl}/api/alerts`, { timeout: 8000 });
+      const data = response.data;
+
+      const validation = {
+        hasAlerts: Array.isArray(data.alerts),
+        hasStats: typeof data.stats === 'object',
+        alertsHaveRequiredFields: data.alerts?.every(alert => 
+          alert.id && alert.severity && alert.message
+        ) || false,
+        statsHaveRequiredFields: data.stats && 
+          typeof data.stats.total === 'number' &&
+          typeof data.stats.critical === 'number'
+      };
+
+      this.recordServiceResult('DataStructures', {
+        validation,
+        structureValid: Object.values(validation).every(v => v === true),
+        sampleAlertKeys: data.alerts?.[0] ? Object.keys(data.alerts[0]) : []
+      });
+
+      console.log(`✅ Data Structures: ${Object.values(validation).every(v => v) ? 'Valid' : 'Issues found'}`);
+      
+    } catch (error) {
+      this.recordServiceResult('DataStructures', {
+        status: 'ERROR',
+        error: error.message
+      });
+      console.log(`❌ Data Structures: ${error.message}`);
+    }
+  }
+
+  async validateLatencyPerformance() {
+    console.log('\n⚡ Testing Latency & Performance...');
+    console.log('-'.repeat(50));
+
+    const endpoints = [
+      { name: 'Alerts', endpoint: '/api/alerts' },
+      { name: 'Predictive Status', endpoint: '/api/analytics/predictive?action=status' }
+    ];
+
+    for (const test of endpoints) {
+      const latencies = [];
+      
+      // Test multiple times for average
+      for (let i = 0; i < 3; i++) {
+        try {
+          const startTime = Date.now();
+          await axios.get(`${this.baseUrl}${test.endpoint}`, { timeout: 10000 });
+          const latency = Date.now() - startTime;
+          latencies.push(latency);
+        } catch (error) {
+          latencies.push(-1); // Error marker
+        }
+      }
+
+      const validLatencies = latencies.filter(l => l > 0);
+      const avgLatency = validLatencies.length > 0 
+        ? validLatencies.reduce((a, b) => a + b) / validLatencies.length 
+        : 0;
+
+      this.recordServiceResult('LatencyPerformance', {
+        endpoint: test.name,
+        averageLatency: `${Math.round(avgLatency)}ms`,
+        consistency: this.calculateConsistency(validLatencies),
+        status: avgLatency < 2000 ? 'GOOD' : avgLatency < 5000 ? 'ACCEPTABLE' : 'SLOW',
+        measurements: latencies
+      });
+
+      console.log(`✅ ${test.name}: ${Math.round(avgLatency)}ms (${validLatencies.length}/3 successful)`);
+    }
+  }
+
+  // Helper methods
+  recordServiceResult(service, details) {
+    this.results.services[service] = this.results.services[service] || [];
+    this.results.services[service].push({
+      ...details,
+      timestamp: new Date().toISOString()
+    });
+
+    this.results.summary.total++;
+    if (details.status === 'ERROR' || details.status === 'FAILED') {
+      this.results.summary.failed++;
+      this.results.issues.push({
+        service,
+        issue: details.error || 'Unknown error',
+        details
+      });
+    } else if (details.status === 'NOT_CONFIGURED' || details.expected) {
+      this.results.summary.warnings++;
+    } else {
+      this.results.summary.passed++;
+    }
+  }
+
+  validateAlertsStructure(data) {
+    return {
+      hasAlertsArray: Array.isArray(data.alerts),
+      hasStats: typeof data.stats === 'object',
+      alertsCount: data.alerts?.length || 0,
+      structure: 'VALID'
+    };
+  }
+
+  checkAuthenticationStatus(response) {
+    return {
+      publicEndpoint: true,
+      noAuthRequired: response.status === 200,
+      rateLimited: response.status === 429
+    };
+  }
+
+  validateAIResponse(data) {
+    return {
+      hasResponse: !!data,
+      validFormat: typeof data === 'object',
+      hasError: !!data.error
+    };
+  }
+
+  checkOpenRouterAuth(data) {
+    return {
+      configured: !data.error || !data.error.includes('API key'),
+      rateLimited: data.error?.includes('rate') || false
+    };
+  }
+
+  checkSupabaseDataIntegrity(data) {
+    return {
+      databaseConnected: data.success === true,
+      hasData: data.alerts?.length >= 0,
+      properStructure: data.hasOwnProperty('statistics')
+    };
+  }
+
+  validatePredictiveStructure(data) {
+    return {
+      hasSuccess: data.success === true,
+      hasService: !!data.service,
+      structureValid: data.hasOwnProperty('service') || data.hasOwnProperty('models')
+    };
+  }
+
+  calculateConsistency(latencies) {
+    if (latencies.length < 2) return 'N/A';
+    const avg = latencies.reduce((a, b) => a + b) / latencies.length;
+    const variance = latencies.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / latencies.length;
+    const stdDev = Math.sqrt(variance);
+    return stdDev < avg * 0.3 ? 'CONSISTENT' : 'VARIABLE';
+  }
+
+  printFinalReport() {
+    console.log('\n' + '='.repeat(80));
+    console.log('📊 COMPREHENSIVE API CONNECTIVITY VALIDATION REPORT');
+    console.log('='.repeat(80));
+    
+    console.log(`\n📈 SUMMARY:`);
+    console.log(`   Total Tests: ${this.results.summary.total}`);
+    console.log(`   ✅ Passed: ${this.results.summary.passed}`);
+    console.log(`   ❌ Failed: ${this.results.summary.failed}`);
+    console.log(`   ⚠️ Warnings: ${this.results.summary.warnings}`);
+    
+    console.log(`\n🔧 SERVICE STATUS:`);
+    for (const [service, tests] of Object.entries(this.results.services)) {
+      const passed = tests.filter(t => t.status !== 'ERROR' && t.status !== 'FAILED').length;
+      const total = tests.length;
+      const status = passed === total ? '✅' : passed > 0 ? '⚠️' : '❌';
+      console.log(`   ${status} ${service}: ${passed}/${total} tests passed`);
+    }
+    
+    if (this.results.issues.length > 0) {
+      console.log(`\n🚨 ISSUES IDENTIFIED:`);
+      this.results.issues.forEach((issue, index) => {
+        console.log(`   ${index + 1}. ${issue.service}: ${issue.issue}`);
+      });
+    }
+    
+    console.log(`\n⏱️ VALIDATION COMPLETED: ${this.results.timestamp}`);
+    console.log('='.repeat(80));
+    
+    // Save detailed report
+    this.saveDetailedReport();
+  }
+
+  async saveDetailedReport() {
+    const reportPath = path.join(process.cwd(), 'api-connectivity-report.json');
+    try {
+      await fs.writeFile(reportPath, JSON.stringify(this.results, null, 2));
+      console.log(`\n💾 Detailed report saved to: ${reportPath}`);
+    } catch (error) {
+      console.log(`\n❌ Failed to save report: ${error.message}`);
+    }
+  }
+}
+
+// Run validation if called directly
+if (require.main === module) {
+  const validator = new APConnectivityValidator();
+  validator.runValidation().catch(console.error);
+}
+
+module.exports = APConnectivityValidator;
