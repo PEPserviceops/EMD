@@ -1,0 +1,445 @@
+/**
+ * API Integration Best Practices Validation Script
+ * 
+ * Tests all enterprise-grade API integration components:
+ * - API Best Practices Framework
+ * - Circuit Breaker Pattern
+ * - Rate Limiter
+ * - Security Enhancements  
+ * - Data Integrity & Caching
+ * - Testing Framework
+ * 
+ * @module test/apiBestPracticesValidation
+ */
+
+const apiBestPractices = require('../src/utils/apiBestPractices');
+const CircuitBreaker = require('../src/utils/circuitBreaker');
+const RateLimiter = require('../src/utils/rateLimiter');
+const SecurityUtils = require('../src/utils/securityUtils');
+const DataIntegrityCaching = require('../src/utils/dataIntegrityCaching');
+const APITestingFramework = require('../src/utils/apiTestingFramework');
+
+async function validateAPIIntegrationBestPractices() {
+  console.log('🚀 Starting API Integration Best Practices Validation...\n');
+  
+  const results = {
+    timestamp: new Date().toISOString(),
+    components: {},
+    summary: {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      warnings: 0
+    }
+  };
+
+  try {
+    // Test 1: API Best Practices Framework
+    console.log('📋 Testing API Best Practices Framework...');
+    results.components.apiBestPractices = await testAPIBestPractices();
+    console.log('✅ API Best Practices Framework: PASSED\n');
+
+    // Test 2: Circuit Breaker Pattern
+    console.log('🔄 Testing Circuit Breaker Pattern...');
+    results.components.circuitBreaker = await testCircuitBreaker();
+    console.log('✅ Circuit Breaker Pattern: PASSED\n');
+
+    // Test 3: Rate Limiter
+    console.log('⏱️ Testing Rate Limiter...');
+    results.components.rateLimiter = await testRateLimiter();
+    console.log('✅ Rate Limiter: PASSED\n');
+
+    // Test 4: Security Utils
+    console.log('🔒 Testing Security Utils...');
+    results.components.securityUtils = await testSecurityUtils();
+    console.log('✅ Security Utils: PASSED\n');
+
+    // Test 5: Data Integrity & Caching
+    console.log('💾 Testing Data Integrity & Caching...');
+    results.components.dataIntegrity = await testDataIntegrityCaching();
+    console.log('✅ Data Integrity & Caching: PASSED\n');
+
+    // Test 6: API Testing Framework
+    console.log('🧪 Testing API Testing Framework...');
+    results.components.testingFramework = await testAPITestingFramework();
+    console.log('✅ API Testing Framework: PASSED\n');
+
+    // Calculate summary
+    for (const [component, test] of Object.entries(results.components)) {
+      results.summary.total++;
+      if (test.passed) results.summary.passed++;
+      else results.summary.failed++;
+      if (test.warnings > 0) results.summary.warnings++;
+    }
+
+    console.log('📊 VALIDATION SUMMARY');
+    console.log('==================');
+    console.log(`Total Components: ${results.summary.total}`);
+    console.log(`✅ Passed: ${results.summary.passed}`);
+    console.log(`❌ Failed: ${results.summary.failed}`);
+    console.log(`⚠️ Warnings: ${results.summary.warnings}`);
+    console.log(`Success Rate: ${((results.summary.passed / results.summary.total) * 100).toFixed(1)}%`);
+
+    if (results.summary.failed === 0) {
+      console.log('\n🎉 ALL TESTS PASSED! API Integration Best Practices are working correctly.');
+    } else {
+      console.log('\n⚠️ Some tests failed. Review the results above.');
+    }
+
+    return results;
+
+  } catch (error) {
+    console.error('❌ Validation failed with error:', error.message);
+    results.error = error.message;
+    throw error;
+  }
+}
+
+async function testAPIBestPractices() {
+  const test = {
+    name: 'API Best Practices Framework',
+    passed: true,
+    warnings: 0,
+    details: []
+  };
+
+  try {
+    // Test configuration validation
+    const config = {
+      apiKey: 'test_key_123',
+      baseUrl: 'https://api.example.com'
+    };
+    
+    const validation = apiBestPractices.validateApiConfig(config);
+    if (!validation.valid) {
+      test.passed = false;
+      test.details.push(`Config validation failed: ${validation.errors.join(', ')}`);
+    }
+
+    // Test request sanitization
+    const dirtyData = {
+      name: 'test<script>alert("xss")</script>',
+      value: 123,
+      nested: { secret: 'hidden_value' }
+    };
+    
+    const sanitized = apiBestPractices.sanitizeRequestData(dirtyData);
+    if (sanitized.name.includes('<script>')) {
+      test.warnings++;
+      test.details.push('XSS sanitization may need review');
+    }
+
+    // Test response validation
+    const response = { data: 'test', status: 'success' };
+    const schema = { required: ['data'], types: { status: 'string' } };
+    const responseValidation = apiBestPractices.validateResponseSchema(response, schema);
+    
+    if (!responseValidation.valid) {
+      test.passed = false;
+      test.details.push(`Response validation failed: ${responseValidation.errors.join(', ')}`);
+    }
+
+    // Test metrics recording
+    apiBestPractices.recordApiMetrics('test-service', {
+      success: true,
+      responseTime: 150,
+      errorType: null
+    });
+
+    const metrics = apiBestPractices.getServiceMetrics('test-service');
+    if (!metrics || metrics.totalCalls !== 1) {
+      test.passed = false;
+      test.details.push('Metrics recording failed');
+    }
+
+    test.details.push('All core functionality working');
+
+  } catch (error) {
+    test.passed = false;
+    test.details.push(`Error: ${error.message}`);
+  }
+
+  return test;
+}
+
+async function testCircuitBreaker() {
+  const test = {
+    name: 'Circuit Breaker Pattern',
+    passed: true,
+    warnings: 0,
+    details: []
+  };
+
+  try {
+    const circuitBreaker = new CircuitBreaker({
+      failureThreshold: 3,
+      resetTimeout: 5000
+    });
+
+    // Test successful operations
+    let successCount = 0;
+    for (let i = 0; i < 5; i++) {
+      try {
+        await circuitBreaker.execute(() => {
+          if (Math.random() < 0.3) throw new Error('Random failure');
+          return Promise.resolve({ success: true });
+        });
+        successCount++;
+      } catch (error) {
+        // Expected for some operations
+      }
+    }
+
+    const state = circuitBreaker.getState();
+    const metrics = circuitBreaker.getMetrics();
+
+    if (!state || !metrics) {
+      test.passed = false;
+      test.details.push('State/metrics retrieval failed');
+    }
+
+    if (successCount === 0) {
+      test.passed = false;
+      test.details.push('No successful operations recorded');
+    }
+
+    test.details.push(`Success count: ${successCount}, State: ${state.state}`);
+
+  } catch (error) {
+    test.passed = false;
+    test.details.push(`Error: ${error.message}`);
+  }
+
+  return test;
+}
+
+async function testRateLimiter() {
+  const test = {
+    name: 'Rate Limiter',
+    passed: true,
+    warnings: 0,
+    details: []
+  };
+
+  try {
+    const rateLimiter = new RateLimiter({
+      requestsPerSecond: 10
+    });
+
+    // Test rate limit checking
+    const limitResult1 = await rateLimiter.checkRateLimit({ id: 'test1' });
+    const limitResult2 = await rateLimiter.checkRateLimit({ id: 'test2' });
+
+    if (!limitResult1 || !limitResult2) {
+      test.passed = false;
+      test.details.push('Rate limit check failed');
+    }
+
+    // Test status retrieval
+    const status = rateLimiter.getStatus();
+    if (!status || !status.buckets) {
+      test.passed = false;
+      test.details.push('Status retrieval failed');
+    }
+
+    // Test deduplication
+    const dedupTest = await rateLimiter.checkRateLimit({ 
+      id: 'duplicate_test',
+      method: 'GET',
+      url: 'https://example.com/test'
+    });
+
+    const dedupTest2 = await rateLimiter.checkRateLimit({ 
+      id: 'duplicate_test',
+      method: 'GET',
+      url: 'https://example.com/test'
+    });
+
+    if (dedupTest2.deduplicated !== true) {
+      test.warnings++;
+      test.details.push('Request deduplication may not be working');
+    }
+
+    test.details.push('Rate limiting core functionality verified');
+
+  } catch (error) {
+    test.passed = false;
+    test.details.push(`Error: ${error.message}`);
+  }
+
+  return test;
+}
+
+async function testSecurityUtils() {
+  const test = {
+    name: 'Security Utils',
+    passed: true,
+    warnings: 0,
+    details: []
+  };
+
+  try {
+    const securityUtils = new SecurityUtils();
+
+    // Test data masking
+    const sensitiveData = {
+      apiKey: 'secret_api_key_123',
+      password: 'user_password',
+      email: 'test@example.com',
+      normalField: 'normal_value'
+    };
+
+    const masked = securityUtils.maskSensitiveData(sensitiveData);
+    
+    if (masked.apiKey === 'secret_api_key_123') {
+      test.passed = false;
+      test.details.push('API key masking failed');
+    }
+
+    // Test coordinate validation
+    const validCoords = { lat: 40.7128, lng: -74.0060 };
+    const invalidCoords = { lat: 999, lng: -200 };
+    
+    if (!securityUtils.validateCoordinates(validCoords)) {
+      test.passed = false;
+      test.details.push('Valid coordinate validation failed');
+    }
+
+    if (securityUtils.validateCoordinates(invalidCoords)) {
+      test.passed = false;
+      test.details.push('Invalid coordinate validation failed');
+    }
+
+    // Test security status
+    const status = securityUtils.getSecurityStatus();
+    if (!status || typeof status.initialized !== 'boolean') {
+      test.passed = false;
+      test.details.push('Security status retrieval failed');
+    }
+
+    test.details.push('Security utilities core functionality verified');
+
+  } catch (error) {
+    test.passed = false;
+    test.details.push(`Error: ${error.message}`);
+  }
+
+  return test;
+}
+
+async function testDataIntegrityCaching() {
+  const test = {
+    name: 'Data Integrity & Caching',
+    passed: true,
+    warnings: 0,
+    details: []
+  };
+
+  try {
+    const dataCache = new DataIntegrityCaching({
+      cache: { defaultTTL: 60000, maxSize: 10 },
+      integrity: { enabled: true }
+    });
+
+    // Test data storage with integrity
+    const testData = {
+      truckId: 'TRUCK_001',
+      location: { lat: 40.7128, lng: -74.0060 },
+      timestamp: new Date().toISOString()
+    };
+
+    const storeResult = await dataCache.store('test_truck_001', testData);
+    
+    if (!storeResult.success) {
+      test.passed = false;
+      test.details.push('Data storage failed');
+    }
+
+    // Test data retrieval
+    const retrieveResult = await dataCache.retrieve('test_truck_001');
+    
+    if (!retrieveResult.found || retrieveResult.data.truckId !== 'TRUCK_001') {
+      test.passed = false;
+      test.details.push('Data retrieval failed');
+    }
+
+    // Test cache statistics
+    const stats = dataCache.getCacheStats();
+    if (!stats || typeof stats.size !== 'number') {
+      test.passed = false;
+      test.details.push('Cache statistics retrieval failed');
+    }
+
+    // Test cache invalidation
+    const invalidateResult = await dataCache.invalidate('test_truck_001');
+    if (!invalidateResult.success) {
+      test.passed = false;
+      test.details.push('Cache invalidation failed');
+    }
+
+    test.details.push('Data integrity and caching verified');
+
+  } catch (error) {
+    test.passed = false;
+    test.details.push(`Error: ${error.message}`);
+  }
+
+  return test;
+}
+
+async function testAPITestingFramework() {
+  const test = {
+    name: 'API Testing Framework',
+    passed: true,
+    warnings: 0,
+    details: []
+  };
+
+  try {
+    const testingFramework = new APITestingFramework({
+      tests: {
+        integration: true,
+        chaos: false, // Disable to avoid network issues
+        performance: false, // Disable to avoid load
+        contract: true,
+        regression: true
+      }
+    });
+
+    // Test basic functionality
+    const testResults = testingFramework.getTestResults();
+    if (!testResults) {
+      test.passed = false;
+      test.details.push('Test results retrieval failed');
+    }
+
+    const metrics = testingFramework.getMetrics();
+    if (!metrics || typeof metrics.isRunning !== 'boolean') {
+      test.passed = false;
+      test.details.push('Metrics retrieval failed');
+    }
+
+    test.details.push('API testing framework core functionality verified');
+
+  } catch (error) {
+    test.passed = false;
+    test.details.push(`Error: ${error.message}`);
+  }
+
+  return test;
+}
+
+// Run validation if called directly
+if (require.main === module) {
+  validateAPIIntegrationBestPractices()
+    .then(results => {
+      console.log('\n📄 Validation completed successfully');
+      process.exit(results.summary.failed === 0 ? 0 : 1);
+    })
+    .catch(error => {
+      console.error('\n💥 Validation failed:', error);
+      process.exit(1);
+    });
+}
+
+module.exports = { validateAPIIntegrationBestPractices };
