@@ -1,0 +1,103 @@
+# Alternative Deployment Options for EMD Polling Service
+
+## Railway Free Tier Limitations ❌
+
+Based on your research, Railway's free tier has critical restrictions:
+
+- **Unverified GitHub accounts**: Only database deployment allowed, no code deployment
+- **Verified accounts**: Limited trial period with usage restrictions
+- **Full functionality**: Requires Hobby plan ($20/month) or Pro plan
+
+**Result**: Railway deployment may not work for your account without upgrading.
+
+## Alternative Platforms ✅
+
+### Option 1: Render.com (Recommended)
+**Free Tier Benefits:**
+- ✅ Always free services (not trial)
+- ✅ Automatic deployments from GitHub
+- ✅ Free SSL certificates
+- ✅ Continuous uptime
+- ✅ 750 hours/month included
+
+**Setup:**
+1. Connect GitHub to Render.com
+2. Select repository and `polling-service` folder
+3. Auto-deploys on git push
+4. Free HTTPS domain provided
+
+### Option 2: Fly.io
+**Free Tier Benefits:**
+- ✅ 3 small apps free permanently
+- ✅ Global edge deployment
+- ✅ Docker support
+- ✅ Automatic HTTPS
+
+**Setup:**
+```bash
+fly launch
+fly deploy
+```
+
+### Option 3: Cyclic (GitHub Integration)
+**Free Tier Benefits:**
+- ✅ Unlimited projects
+- ✅ GitHub integration
+- ✅ Custom domains
+- ✅ Automatic SSL
+
+### Option 4: Koyeb
+**Free Tier Benefits:**
+- ✅ 2 services free
+- ✅ Global edge deployment
+- ✅ Built-in monitoring
+
+## Recommended Solution: Render.com
+
+Since your Railway account has GitHub verification limitations, Render.com is the best alternative:
+
+### Why Render.com?
+1. **Always Free**: No time limits or trial restrictions
+2. **Zero Configuration**: Automatic deployments
+3. **Production Ready**: HTTPS, monitoring, logging included
+4. **Simple Integration**: GitHub webhook for instant deployments
+
+### Deploy to Render.com
+
+**Step 1: Create Account**
+- Go to [render.com](https://render.com)
+- Connect GitHub account
+- Grant repository access
+
+**Step 2: Create Web Service**
+- Click "New" → "Web Service"
+- Connect your EMD repository
+- Set build command: `npm install`
+- Set start command: `node server.js`
+- Select `polling-service` as root directory
+
+**Step 3: Environment Variables**
+Add in Render dashboard:
+```
+FILEMAKER_HOST=your-server.com
+FILEMAKER_DATABASE=your-db
+FILEMAKER_USER=your-user
+FILEMAKER_PASSWORD=your-pass
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-key
+POLLING_INTERVAL=30000
+POLLING_AUTO_START=true
+```
+
+**Step 4: Get Service URL**
+After deployment: `https://your-service-name.onrender.com`
+
+**Step 5: Update Vercel**
+Set environment variable:
+```
+RAILWAY_POLLING_URL=https://your-service-name.onrender.com
+```
+
+## Updated File Modifications Needed
+
+Update the polling API files to use Render URL instead of Railway:

@@ -1,9 +1,9 @@
 /**
  * EMD Polling Service - Standalone Server
- * 
+ *
  * Continuously polls FileMaker and syncs data to Supabase
- * Designed to run on your GoDaddy server at api.ziklag.shop
- * 
+ * Designed to run on Railway deployment platform
+ *
  * This solves the Vercel serverless limitation by running as a persistent service
  */
 

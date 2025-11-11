@@ -1,50 +1,38 @@
 /**
  * API Route: /api/polling/status
- * Get data service status and statistics (serverless-compatible)
+ * Get external polling service status and statistics
  */
 
-import OnDemandDataService from '../../../services/OnDemandDataService';
+import axios from 'axios';
 
-// Create a singleton instance for this serverless function
-let dataService = null;
-
-function getDataService() {
-  if (!dataService) {
-    dataService = new OnDemandDataService({
-      cacheTTL: 30000, // 30 seconds
-      batchSize: parseInt(process.env.POLLING_BATCH_SIZE) || 100,
-      fileMaker: {
-        host: process.env.FILEMAKER_HOST,
-        database: process.env.FILEMAKER_DATABASE,
-        layout: process.env.FILEMAKER_LAYOUT,
-        username: process.env.FILEMAKER_USER,
-        password: process.env.FILEMAKER_PASSWORD
-      }
-    });
-  }
-  return dataService;
-}
+const POLLING_SERVICE_URL = process.env.POLLING_SERVICE_URL;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!POLLING_SERVICE_URL) {
+    return res.status(500).json({
+      success: false,
+      error: 'POLLING_SERVICE_URL environment variable not set'
+    });
+  }
+
   try {
-    const dataService = getDataService();
-
-    const stats = dataService.getStats();
-
+    const response = await axios.get(`${POLLING_SERVICE_URL}/stats`);
+    
     res.status(200).json({
       success: true,
       data: {
-        stats,
-        environment: 'serverless',
-        mode: 'on-demand'
+        stats: response.data.stats,
+        service: 'External Polling Service',
+        environment: 'external',
+        url: POLLING_SERVICE_URL
       }
     });
   } catch (error) {
-    console.error('Error getting status:', error);
+    console.error('Error getting polling service status:', error);
     res.status(500).json({
       success: false,
       error: error.message

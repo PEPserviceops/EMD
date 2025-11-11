@@ -1,0 +1,130 @@
+# Manual Railway Deployment Instructions
+
+Since Railway CLI requires interactive login, here's the manual deployment approach:
+
+## Method 1: GitHub Integration (Recommended)
+
+### Step 1: Deploy via Railway Dashboard
+
+1. **Go to Railway Dashboard**
+   - Visit: https://railway.app/dashboard
+   - Login to your Railway account
+
+2. **Import Project**
+   - Click "New Project"
+   - Select "Deploy from GitHub repo"
+   - Choose your EMD repository
+   - Set the root directory to `polling-service`
+
+3. **Configure Build**
+   - Railway will auto-detect Node.js
+   - Build command: `npm install`
+   - Start command: `node server.js`
+
+### Step 2: Set Environment Variables
+
+In Railway dashboard:
+1. Go to your project settings
+2. Navigate to "Variables" tab
+3. Add these variables:
+
+```
+FILEMAKER_HOST=your-filemaker-server.com
+FILEMAKER_DATABASE=your_database_name
+FILEMAKER_LAYOUT=jobs_api
+FILEMAKER_USER=your_username
+FILEMAKER_PASSWORD=your_password
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+POLLING_INTERVAL=30000
+POLLING_AUTO_START=true
+NODE_ENV=production
+PORT=3001
+```
+
+### Step 3: Deploy
+
+1. Click "Deploy" in Railway dashboard
+2. Wait for build to complete
+3. Get your Railway domain (e.g., `https://charismatic-friendship-production.up.railway.app`)
+
+## Method 2: Using GitHub Actions
+
+Create `.github/workflows/railway-deploy.yml`:
+
+```yaml
+name: Deploy to Railway
+
+on:
+  push:
+    paths:
+      - 'polling-service/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy to Railway
+        uses: railway/app-deploy@v1
+        with:
+          service: polling-service
+          token: ${{ secrets.RAILWAY_TOKEN }}
+```
+
+## Method 3: Docker Deployment
+
+Create `polling-service/Dockerfile`:
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+
+EXPOSE 3001
+
+CMD ["node", "server.js"]
+```
+
+## Verification
+
+After deployment, test the service:
+
+```bash
+curl https://your-domain.up.railway.app/health
+```
+
+Expected response:
+```json
+{
+  "status": "healthy",
+  "service": "EMD Polling Service",
+  "isPolling": true,
+  "stats": {
+    "totalPolls": 1,
+    "successfulPolls": 1,
+    "failedPolls": 0
+  }
+}
+```
+
+## Troubleshooting
+
+- **Build Fails**: Check `package.json` dependencies
+- **Service Won't Start**: Verify environment variables
+- **Polling Not Working**: Check FileMaker credentials
+- **Database Errors**: Verify Supabase connection
+
+## Integration with Main Project
+
+Once deployed, add this to your Vercel environment:
+```
+POLLING_SERVICE_URL=https://your-domain.up.railway.app
+```
+
+Your main dashboard will now receive real-time FileMaker data through Supabase.

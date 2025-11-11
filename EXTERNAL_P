@@ -1,0 +1,138 @@
+# Updated Deployment Instructions - External Polling Service
+
+## Problem Solved: Railway Free Tier Limitations ❌
+
+Your Railway account has GitHub verification restrictions that prevent code deployment on the free tier. We've updated the solution to be platform-agnostic.
+
+## Solution: External Polling Service with Generic Configuration ✅
+
+The polling service is now configured to work with **any** cloud platform:
+
+### Updated Configuration
+- **Generic Environment Variable**: `POLLING_SERVICE_URL`
+- **Platform Agnostic**: Works with Render.com, Fly.io, Railway, etc.
+- **Easy Migration**: Change one environment variable to switch platforms
+
+### Updated Files
+- `src/pages/api/polling/start.js` - Now uses `POLLING_SERVICE_URL`
+- `src/pages/api/polling/stop.js` - Generic polling service proxy
+- `src/pages/api/polling/status.js` - Platform-independent status
+
+## Recommended Deployment: Render.com (Free)
+
+### Why Render.com?
+- ✅ **Always Free**: No trial limits or verification requirements
+- ✅ **GitHub Integration**: Automatic deployments on push
+- ✅ **Production Ready**: HTTPS, monitoring, logs included
+- ✅ **Simple Setup**: 5-minute deployment process
+
+### Deploy Steps
+
+**1. Create Render Account**
+- Go to [render.com](https://render.com)
+- Sign up with GitHub
+- Connect your EMD repository
+
+**2. Create Web Service**
+- Click "New" → "Web Service"
+- Connect your GitHub repo
+- Select `polling-service` directory as root
+- Configure:
+  - **Build Command**: `npm install`
+  - **Start Command**: `node server.js`
+  - **Root Directory**: `polling-service`
+
+**3. Add Environment Variables**
+In Render dashboard → Environment:
+```
+FILEMAKER_HOST=your-filemaker-server.com
+FILEMAKER_DATABASE=your_database_name
+FILEMAKER_LAYOUT=jobs_api
+FILEMAKER_USER=your_username
+FILEMAKER_PASSWORD=your_password
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+POLLING_INTERVAL=30000
+POLLING_AUTO_START=true
+NODE_ENV=production
+```
+
+**4. Deploy**
+- Render will auto-deploy from your GitHub repo
+- Get your service URL: `https://your-service-name.onrender.com`
+
+**5. Update Vercel Environment**
+Add to your Vercel project:
+```
+POLLING_SERVICE_URL=https://your-service-name.onrender.com
+```
+
+## Alternative Platforms
+
+### Option 2: Fly.io (Free)
+```bash
+# Install CLI
+curl -L https://fly.io/install.sh | sh
+
+# Deploy
+fly launch
+fly deploy
+```
+
+### Option 3: Cyclic (Free)
+- Connect GitHub repo
+- Auto-deploys on git push
+- Unlimited projects
+
+### Option 4: Railway (Paid)
+- Requires Hobby plan ($20/month)
+- GitHub verification needed for free tier
+
+## Testing Your Deployment
+
+Once deployed, test the service:
+
+```bash
+curl https://your-service-name.onrender.com/health
+```
+
+Expected response:
+```json
+{
+  "status": "healthy",
+  "service": "EMD Polling Service",
+  "isPolling": true,
+  "stats": {
+    "totalPolls": 1,
+    "successfulPolls": 1,
+    "failedPolls": 0,
+    "lastPollTime": "2025-11-11T19:39:24.368Z"
+  }
+}
+```
+
+## Integration Complete
+
+The main Vercel dashboard will automatically work with the external polling service:
+
+- **Start/Stop**: Via `/api/polling/start` and `/api/polling/stop`
+- **Status**: Via `/api/polling/status` 
+- **Data Flow**: External service polls FileMaker → Supabase → Dashboard
+
+## Benefits of This Approach
+
+1. **Platform Independence**: Switch platforms by changing one environment variable
+2. **No Vendor Lock-in**: Works with any cloud provider
+3. **Scalability**: Easy to upgrade to paid tiers if needed
+4. **Cost Effective**: Render free tier covers this use case perfectly
+5. **Reliable**: 24/7 uptime with automatic HTTPS
+
+## Next Steps
+
+1. **Deploy to Render.com** following the steps above
+2. **Configure real credentials** in Render environment variables
+3. **Set Vercel environment variable**: `POLLING_SERVICE_URL=your-render-url`
+4. **Test integration** by checking dashboard for FileMaker data updates
+5. **Monitor logs** in Render dashboard for first 24 hours
+
+The solution now provides a robust, platform-independent polling service that solves the Vercel serverless limitation without requiring paid subscriptions.
