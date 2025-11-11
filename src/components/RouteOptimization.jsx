@@ -28,39 +28,53 @@ import {
 export default function RouteOptimization() {
   const [optimizationStatus, setOptimizationStatus] = useState('loading');
   const [vehicles, setVehicles] = useState([]);
+  const [scheduledJobs, setScheduledJobs] = useState([]);
+  const [jobGroups, setJobGroups] = useState({});
   const [optimizedRoutes, setOptimizedRoutes] = useState([]);
   const [dispatchAssignments, setDispatchAssignments] = useState([]);
   const [performanceMetrics, setPerformanceMetrics] = useState({});
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [activeView, setActiveView] = useState('overview'); // overview, vehicles, routes, dispatch, performance
 
-  // Auto-refresh data every 30 seconds
+  // Auto-refresh data every 30 seconds, and reload when date changes
   useEffect(() => {
     loadRouteOptimizationData();
     const interval = setInterval(loadRouteOptimizationData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedDate]); // Reload when date changes
 
   const loadRouteOptimizationData = async () => {
     try {
       setOptimizationStatus('loading');
       
-      // Load all route optimization data
-      const [statusResponse, vehiclesResponse, performanceResponse] = await Promise.all([
+      // Load all route optimization data including real scheduled jobs
+      const [statusResponse, vehiclesResponse, performanceResponse, jobsResponse] = await Promise.all([
         fetch('/api/route-optimization?action=status'),
         fetch('/api/route-optimization?action=vehicles'),
-        fetch('/api/route-optimization?action=performance')
+        fetch('/api/route-optimization?action=performance'),
+        fetch(`/api/jobs/scheduled?date=${selectedDate}&groupBy=driver`)
       ]);
 
       const statusData = await statusResponse.json();
       const vehiclesData = await vehiclesResponse.json();
       const performanceData = await performanceResponse.json();
+      const jobsData = await jobsResponse.json();
 
       if (statusData.success) {
         setOptimizationStatus('operational');
         setVehicles(vehiclesData.vehicles || []);
         setPerformanceMetrics(performanceData.performance || {});
+        
+        // Set real scheduled jobs from FileMaker
+        if (jobsData.success) {
+          setScheduledJobs(jobsData.jobs || []);
+          setJobGroups(jobsData.groups || {});
+          console.log(`Loaded ${jobsData.totalJobs} scheduled jobs for ${selectedDate}`);
+          console.log(`Job groups:`, Object.keys(jobsData.groups));
+        }
+        
         setLastUpdate(new Date().toLocaleTimeString());
       }
 
@@ -73,37 +87,64 @@ export default function RouteOptimization() {
   const handleOptimizeRoutes = async () => {
     setIsOptimizing(true);
     try {
-      // Get current active jobs (mock data for demonstration)
-      const mockJobs = [
-        {
-          id: 'JOB_001',
-          priority: 'HIGH',
-          location: { lat: 39.7392, lng: -104.9903 },
-          dueDate: '2025-11-11T15:00:00Z'
-        },
-        {
-          id: 'JOB_002', 
-          priority: 'MEDIUM',
-          location: { lat: 39.7506, lng: -105.0205 },
-          dueDate: '2025-11-11T16:00:00Z'
-        }
-      ];
+      // Check if we have scheduled jobs
+      if (scheduledJobs.length === 0) {
+        alert('No scheduled jobs found for the selected date. Please check the Scheduled Jobs in FileMaker.');
+        setIsOptimizing(false);
+        return;
+      }
 
-      const mockVehicles = vehicles.map(vehicle => ({
-        id: vehicle.id,
-        driverId: vehicle.driverId,
-        location: vehicle.location,
-        capacity: vehicle.capacity,
-        currentJobs: 0
+      console.log(`Optimizing routes for ${scheduledJobs.length} jobs`);
+
+      // Use real scheduled jobs from FileMaker
+      const realJobs = scheduledJobs.map(job => ({
+        id: job.job_id,
+        jobId: job.job_id,
+        address: job.address,
+        city: job.raw_data?.fieldData?._kf_city_id,
+        state: job.raw_data?.fieldData?._kf_state_id,
+        zip: job.raw_data?.fieldData?.zip_C1,
+        location: job.coordinates_lat && job.coordinates_lng ? {
+          lat: job.coordinates_lat,
+          lng: job.coordinates_lng
+        } : null,
+        priority: job.job_type === 'Delivery' ? 'HIGH' : 'MEDIUM',
+        load: 1,
+        driver: job.lead_id,
+        truck: job.truck_id,
+        jobType: job.job_type,
+        dueDate: job.job_date
       }));
+
+      // Create vehicles from unique trucks in scheduled jobs
+      const truckMap = new Map();
+      for (const job of scheduledJobs) {
+        if (job.truck_id && !truckMap.has(job.truck_id)) {
+          truckMap.set(job.truck_id, {
+            id: job.truck_id,
+            driverId: job.lead_id || 'Unassigned',
+            name: `Truck ${job.truck_id}`,
+            location: job.coordinates_lat && job.coordinates_lng ? {
+              lat: job.coordinates_lat,
+              lng: job.coordinates_lng
+            } : { lat: 39.7392, lng: -104.9903 }, // Default depot
+            capacity: 15,
+            currentJobs: 0
+          });
+        }
+      }
+
+      const realVehicles = Array.from(truckMap.values());
+
+      console.log(`Using ${realVehicles.length} trucks for optimization`);
 
       const response = await fetch('/api/route-optimization', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'optimize',
-          jobs: mockJobs,
-          vehicles: mockVehicles,
+          jobs: realJobs,
+          vehicles: realVehicles,
           options: { algorithm: 'nearest_neighbor' }
         })
       });
@@ -111,10 +152,12 @@ export default function RouteOptimization() {
       const data = await response.json();
       if (data.success) {
         setOptimizedRoutes(data.optimization.routes || []);
+        console.log(`Optimized ${data.optimization.routes?.length || 0} routes`);
       }
 
     } catch (error) {
       console.error('Route optimization failed:', error);
+      alert(`Route optimization failed: ${error.message}`);
     } finally {
       setIsOptimizing(false);
     }
@@ -252,32 +295,94 @@ export default function RouteOptimization() {
 
       {/* Content based on active view */}
       {activeView === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Optimization Actions */}
-          <div className="lg:col-span-1">
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6">
-              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <Zap className="text-blue-600" size={20} />
-                Optimization Actions
+        <div className="space-y-6">
+          {/* Date Selector and Scheduled Jobs Info */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Clock className="text-blue-600" size={20} />
+                Scheduled Jobs
               </h3>
-              <div className="space-y-3">
-                <button
-                  onClick={handleOptimizeRoutes}
-                  disabled={isOptimizing}
-                  className={`w-full p-3 rounded-xl text-left transition-all ${
-                    isOptimizing
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-lg'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold">Optimize Routes</p>
-                      <p className="text-sm opacity-90">Find optimal routes for all vehicles</p>
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-slate-600">Date:</label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 text-center">
+                <div className="text-3xl font-bold text-blue-600">{scheduledJobs.length}</div>
+                <div className="text-sm text-slate-600 font-medium">Scheduled Jobs</div>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 text-center">
+                <div className="text-3xl font-bold text-green-600">{Object.keys(jobGroups).length}</div>
+                <div className="text-sm text-slate-600 font-medium">Drivers</div>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 text-center">
+                <div className="text-3xl font-bold text-purple-600">
+                  {Array.from(new Set(scheduledJobs.map(j => j.truck_id).filter(Boolean))).length}
+                </div>
+                <div className="text-sm text-slate-600 font-medium">Trucks</div>
+              </div>
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-4 text-center">
+                <div className="text-3xl font-bold text-yellow-600">{optimizedRoutes.length}</div>
+                <div className="text-sm text-slate-600 font-medium">Routes Generated</div>
+              </div>
+            </div>
+
+            {/* Driver breakdown */}
+            {Object.keys(jobGroups).length > 0 && (
+              <div className="mt-4 p-4 bg-slate-50 rounded-xl">
+                <h4 className="text-sm font-bold text-slate-700 mb-2">Jobs by Driver</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                  {Object.entries(jobGroups).map(([driver, group]) => (
+                    <div key={driver} className="flex justify-between items-center bg-white px-3 py-2 rounded-lg">
+                      <span className="font-medium text-slate-700">{driver}</span>
+                      <span className="text-blue-600 font-bold">{group.totalJobs} jobs</span>
                     </div>
-                    <Route size={20} />
-                  </div>
-                </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Optimization Actions */}
+            <div className="lg:col-span-1">
+              <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <Zap className="text-blue-600" size={20} />
+                  Optimization Actions
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={handleOptimizeRoutes}
+                    disabled={isOptimizing || scheduledJobs.length === 0}
+                    className={`w-full p-3 rounded-xl text-left transition-all ${
+                      isOptimizing || scheduledJobs.length === 0
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-lg'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold">
+                          {isOptimizing ? 'Optimizing...' : 'Optimize Routes'}
+                        </p>
+                        <p className="text-sm opacity-90">
+                          {scheduledJobs.length > 0
+                            ? `${scheduledJobs.length} jobs ready to optimize`
+                            : 'No scheduled jobs found'}
+                        </p>
+                      </div>
+                      <Route size={20} />
+                    </div>
+                  </button>
 
                 <button
                   onClick={handleDispatchOptimization}
@@ -323,6 +428,37 @@ export default function RouteOptimization() {
                 <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl">
                   <div className="text-2xl font-bold text-purple-600">95%</div>
                   <div className="text-sm text-slate-600 font-medium">Efficiency Score</div>
+                  </div>
+                </div>
+              </div>
+            
+              {/* Performance Metrics - Updated */}
+              <div className="lg:col-span-2">
+                <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Target className="text-green-600" size={20} />
+                    Performance Overview
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
+                      <div className="text-2xl font-bold text-blue-600">{vehicles.length}</div>
+                      <div className="text-sm text-slate-600 font-medium">GPS Vehicles</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+                      <div className="text-2xl font-bold text-green-600">{optimizedRoutes.length}</div>
+                      <div className="text-sm text-slate-600 font-medium">Optimized Routes</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl">
+                      <div className="text-2xl font-bold text-yellow-600">
+                        {scheduledJobs.filter(j => j.coordinates_lat).length}
+                      </div>
+                      <div className="text-sm text-slate-600 font-medium">Geocoded Jobs</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl">
+                      <div className="text-2xl font-bold text-purple-600">95%</div>
+                      <div className="text-sm text-slate-600 font-medium">Efficiency Score</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

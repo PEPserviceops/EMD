@@ -17,6 +17,7 @@
 const routeOptimizationService = require('../../services/RouteOptimizationService');
 const gpsIntegrationService = require('../../services/GPSIntegrationService');
 const dispatchManagementService = require('../../services/DispatchManagementService');
+const geocodingService = require('../../services/GeocodingService');
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -524,20 +525,53 @@ async function handleWorkloadBalancing(req, res, balancingData) {
  * Process job locations to ensure they have coordinates
  */
 async function processJobLocations(jobs) {
-  // In a real implementation, this would:
-  // 1. Check if jobs have coordinates
-  // 2. If not, geocode addresses using Google Maps API
-  // 3. Cache results for performance
+  const processedJobs = [];
   
-  return jobs.map(job => ({
-    ...job,
-    location: job.location || {
-      lat: 39.7392 + (Math.random() - 0.5) * 0.1, // Mock coordinates
-      lng: -104.9903 + (Math.random() - 0.5) * 0.1
-    },
-    priority: job.priority || 'MEDIUM',
-    load: job.load || 1
-  }));
+  for (const job of jobs) {
+    let location = job.location;
+    
+    // If no coordinates provided, try to geocode the address
+    if (!location || (!location.lat && !location.lng)) {
+      if (job.address && geocodingService.isEnabled()) {
+        try {
+          const geocoded = await geocodingService.geocodeAddress(
+            job.address,
+            job.city,
+            job.state,
+            job.zip
+          );
+          
+          if (geocoded.lat && geocoded.lng) {
+            location = {
+              lat: geocoded.lat,
+              lng: geocoded.lng
+            };
+            console.log(`Geocoded job ${job.id || job.jobId}: ${job.address} → (${location.lat}, ${location.lng})`);
+          } else {
+            console.warn(`Failed to geocode job ${job.id || job.jobId}: ${job.address}`);
+            // Use fallback location (Denver) for failed geocoding
+            location = { lat: 39.7392, lng: -104.9903 };
+          }
+        } catch (error) {
+          console.error(`Geocoding error for job ${job.id || job.jobId}:`, error.message);
+          // Use fallback location
+          location = { lat: 39.7392, lng: -104.9903 };
+        }
+      } else {
+        // No address or geocoding disabled - use fallback
+        location = { lat: 39.7392, lng: -104.9903 };
+      }
+    }
+    
+    processedJobs.push({
+      ...job,
+      location: location,
+      priority: job.priority || 'MEDIUM',
+      load: job.load || 1
+    });
+  }
+  
+  return processedJobs;
 }
 
 /**
