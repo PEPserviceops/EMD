@@ -14,9 +14,9 @@
  * @module pages/api/route-optimization
  */
 
-const routeOptimizationService = require('../../../services/RouteOptimizationService');
-const gpsIntegrationService = require('../../../services/GPSIntegrationService');
-const dispatchManagementService = require('../../../services/DispatchManagementService');
+const routeOptimizationService = require('../../services/RouteOptimizationService');
+const gpsIntegrationService = require('../../services/GPSIntegrationService');
+const dispatchManagementService = require('../../services/DispatchManagementService');
 
 export default async function handler(req, res) {
   // Set CORS headers
