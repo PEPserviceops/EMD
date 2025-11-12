@@ -13,7 +13,7 @@
  */
 
 const RouteOptimizationService = require('./RouteOptimizationService');
-const GPSIntegrationService = require('./GPSIntegrationService');
+const SamsaraIntegrationService = require('./SamsaraIntegrationService');
 
 class DispatchManagementService {
   constructor() {
@@ -122,7 +122,7 @@ class DispatchManagementService {
       const dispatchStartTime = Date.now();
       
       // Get real-time driver locations and status
-      const driverLocations = await GPSIntegrationService.getVehicleLocations(
+      const driverLocations = await SamsaraIntegrationService.getMultipleTruckLocations(
         availableDrivers.map(d => d.vehicleId)
       );
       
@@ -481,8 +481,8 @@ class DispatchManagementService {
    */
   async _validateReassignment(jobId, fromDriverId, toDriverId, reason) {
     // Get driver information
-    const fromDriver = await GPSIntegrationService.getVehicleLocations([fromDriverId]);
-    const toDriver = await GPSIntegrationService.getVehicleLocations([toDriverId]);
+    const fromDriver = await SamsaraIntegrationService.getMultipleTruckLocations([fromDriverId]);
+    const toDriver = await SamsaraIntegrationService.getMultipleTruckLocations([toDriverId]);
     
     if (!fromDriver.vehicles.length || !toDriver.vehicles.length) {
       return {

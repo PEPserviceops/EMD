@@ -15,7 +15,7 @@
  */
 
 const routeOptimizationService = require('../../services/RouteOptimizationService');
-const gpsIntegrationService = require('../../services/GPSIntegrationService');
+const samsaraIntegrationService = require('../../services/SamsaraIntegrationService');
 const dispatchManagementService = require('../../services/DispatchManagementService');
 const geocodingService = require('../../services/GeocodingService');
 

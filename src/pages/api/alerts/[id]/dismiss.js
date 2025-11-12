@@ -3,7 +3,27 @@
  * Dismiss a specific alert
  */
 
-import { getPollingService } from '../../../../lib/pollingServiceInstance';
+const OnDemandDataService = require('../../../services/OnDemandDataService');
+
+// Create a singleton instance for this serverless function
+let dataService = null;
+
+function getDataService() {
+  if (!dataService) {
+    dataService = new OnDemandDataService({
+      cacheTTL: 30000, // 30 seconds
+      batchSize: parseInt(process.env.POLLING_BATCH_SIZE) || 100,
+      fileMaker: {
+        host: process.env.FILEMAKER_HOST,
+        database: process.env.FILEMAKER_DATABASE,
+        layout: process.env.FILEMAKER_LAYOUT,
+        username: process.env.FILEMAKER_USER,
+        password: process.env.FILEMAKER_PASSWORD
+      }
+    });
+  }
+  return dataService;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -21,8 +41,8 @@ export default async function handler(req, res) {
       });
     }
 
-    const pollingService = getPollingService();
-    const alertEngine = pollingService.alertEngine;
+    const dataService = getDataService();
+    const alertEngine = dataService.alertEngine;
 
     const success = alertEngine.dismissAlert(id, dismissedBy);
 
@@ -46,4 +66,3 @@ export default async function handler(req, res) {
     });
   }
 }
-
