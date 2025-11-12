@@ -3,7 +3,7 @@ services:
     name: emd-dashboard
     runtime: node
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: npx next start
     envVars:
       - key: NODE_ENV
         value: production
