@@ -8,6 +8,7 @@ import AlertCard from './AlertCard';
 import PredictiveAnalytics from './PredictiveAnalytics';
 import RouteOptimization from './RouteOptimization';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import FleetStatusDashboard from './FleetStatusDashboard';
 import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3, Navigation, MapPin, Truck, Zap, Database } from 'lucide-react';
 
 export default function Dashboard() {
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [newAlertCount, setNewAlertCount] = useState(0);
   const previousAlertCount = useRef(0);
   const audioRef = useRef(null);
+  const [alertsSource, setAlertsSource] = useState('filemaker');
 
   // GPS Verification State
   const [gpsStatus, setGpsStatus] = useState(null);
@@ -74,6 +76,7 @@ export default function Dashboard() {
 
       setAlerts(data.alerts || []);
       setStats(data.stats || stats);
+      setAlertsSource(data.source || 'unknown');
       setLastUpdate(new Date().toLocaleTimeString());
       setApiStatus('Connected');
     } catch (error) {
@@ -229,7 +232,7 @@ export default function Dashboard() {
       {/* Enhanced Navigation Tabs */}
       <div className="max-w-7xl mx-auto px-8 pt-6">
         <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-2">
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-6 gap-2">
             <button
               onClick={() => setActiveTab('alerts')}
               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
@@ -287,6 +290,19 @@ export default function Dashboard() {
             </button>
 
             <button
+              onClick={() => setActiveTab('fleet-status')}
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'fleet-status'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <Truck size={20} />
+              <span>Fleet Status</span>
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            </button>
+
+            <button
               onClick={() => setActiveTab('gps-verification')}
               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'gps-verification'
@@ -306,6 +322,32 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-8 py-8">
         {activeTab === 'alerts' ? (
           <div className="space-y-8">
+            {/* Demo Mode Indicator */}
+            {alertsSource === 'demo' && (
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="bg-red-100 p-3 rounded-lg flex-shrink-0">
+                    <AlertCircle className="text-red-600" size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-red-900 text-lg mb-2">🚨 FileMaker API Connection Blocked</h3>
+                    <div className="space-y-2 text-sm text-red-800">
+                      <p><strong>Issue:</strong> FileMaker server returns 502 "Bad Gateway" errors</p>
+                      <p><strong>Cause:</strong> Server configured with origin restrictions (Access-Control-Allow-Origin: MODD)</p>
+                      <p><strong>Status:</strong> API works from authorized networks but blocked for this application</p>
+                      <p><strong>Solution:</strong> Server administrator needs to whitelist this application's IP/domain</p>
+                    </div>
+                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800">
+                        <strong>Current Status:</strong> Showing demo alerts with current dates (Nov 11-12, 2025) to demonstrate system functionality.
+                        Real alerts will appear once FileMaker connectivity is restored.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Stats Bar */}
             <div className="grid grid-cols-5 gap-5">
               <StatCard
@@ -454,6 +496,8 @@ export default function Dashboard() {
           <AnalyticsDashboard />
         ) : activeTab === 'route-optimization' ? (
           <RouteOptimization />
+        ) : activeTab === 'fleet-status' ? (
+          <FleetStatusDashboard />
         ) : (
           <GpsVerificationPanel
             gpsStatus={gpsStatus}

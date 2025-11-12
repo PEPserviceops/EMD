@@ -51,12 +51,25 @@ class OnDemandDataService {
     const startTime = Date.now();
 
     try {
-      console.log('[OnDemandDataService] Fetching current data from FileMaker (last 30 days)...');
+      console.log('[OnDemandDataService] Testing FileMaker connectivity first...');
 
-      // Calculate date range (last 30 days to avoid historical data)
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - this.config.daysBack);
+      // First test basic connectivity by trying to find a known job
+      console.log('[OnDemandDataService] Testing with known job lookup...');
+      try {
+        const testJob = await this.fileMakerAPI.findJob('603142');
+        console.log(`[OnDemandDataService] ✅ Basic connectivity test passed - found job: ${testJob?.fieldData?._kp_job_id}`);
+      } catch (connectError) {
+        console.log(`[OnDemandDataService] ❌ Basic connectivity test failed: ${connectError.message}`);
+        throw new Error(`FileMaker connectivity test failed: ${connectError.message}`);
+      }
+
+      console.log('[OnDemandDataService] Fetching current data from FileMaker (Nov 11-12, 2025)...');
+
+      // Target specific date range: November 11-12, 2025
+      const startDate = new Date('2025-11-11');
+      const endDate = new Date('2025-11-12');
+
+      console.log(`[OnDemandDataService] Date range: ${startDate.toLocaleDateString('en-US')} to ${endDate.toLocaleDateString('en-US')}`);
 
       // Fetch jobs from FileMaker with date filtering
       const jobs = await this.fileMakerAPI.getActiveJobs({

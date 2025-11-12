@@ -1,6 +1,6 @@
 /**
  * Analytics Dashboard Component
- * Comprehensive historical analytics from Supabase data
+ * Comprehensive historical analytics with interactive charts and filtering
  */
 
 import React, { useState, useEffect } from 'react';
@@ -19,14 +19,29 @@ import {
   Download,
   Eye,
   Target,
-  Zap
+  Zap,
+  FileText,
+  PieChart,
+  Users,
+  Layers
 } from 'lucide-react';
+
+// Import chart components
+import JobTrendsChart from './charts/JobTrendsChart';
+import AlertAnalyticsChart from './charts/AlertAnalyticsChart';
+import EfficiencyMetricsChart from './charts/EfficiencyMetricsChart';
+import JobTypeDistributionChart from './charts/JobTypeDistributionChart';
+import DriverPerformanceChart from './charts/DriverPerformanceChart';
+import TimeSeriesChart from './charts/TimeSeriesChart';
+
+// Import export utilities
+import { exportAnalyticsReport, exportAnalyticsReportPDF } from '../utils/exportUtils';
 
 export default function AnalyticsDashboard() {
   const [activeView, setActiveView] = useState('overview');
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
-    end: new Date().toISOString().split('T')[0] // Today
+    start: '2025-11-11', // November 11, 2025
+    end: '2025-11-12'   // November 12, 2025
   });
   const [analyticsData, setAnalyticsData] = useState({
     jobs: null,
@@ -90,15 +105,27 @@ export default function AnalyticsDashboard() {
     }));
   };
 
-  const exportData = () => {
-    const dataStr = JSON.stringify(analyticsData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `analytics-${dateRange.start}-to-${dateRange.end}.json`;
+  // Filtering state
+  const [jobTypeFilter, setJobTypeFilter] = useState('all');
+  const [driverFilter, setDriverFilter] = useState('all');
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
+  const handleExportCSV = () => {
+    try {
+      exportAnalyticsReport(analyticsData, dateRange);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportPDF = () => {
+    try {
+      exportAnalyticsReportPDF(analyticsData, dateRange);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('PDF export failed. Please try again.');
+    }
   };
 
   return (
@@ -140,14 +167,40 @@ export default function AnalyticsDashboard() {
             <span className="text-sm font-medium">Refresh</span>
           </button>
 
-          {/* Export Button */}
-          <button
-            onClick={exportData}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-lg transition-all"
-          >
-            <Download size={18} />
-            <span className="text-sm font-medium">Export</span>
-          </button>
+          {/* Export Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-lg transition-all"
+            >
+              <Download size={18} />
+              <span className="text-sm font-medium">Export</span>
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
+                <button
+                  onClick={() => {
+                    handleExportCSV();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FileText size={16} />
+                  Export as CSV
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportPDF();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FileText size={16} />
+                  Export as PDF
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -371,6 +424,9 @@ function OverviewView({ data, dateRange }) {
 
 // Jobs View Component
 function JobsView({ data, dateRange }) {
+  const [chartType, setChartType] = useState('line');
+  const [jobTypeFilter, setJobTypeFilter] = useState('all');
+
   if (!data || data.error) {
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-16 text-center">
@@ -383,45 +439,113 @@ function JobsView({ data, dateRange }) {
     );
   }
 
-  // Group jobs by status
-  const statusCounts = {};
-  data.data?.forEach(job => {
-    statusCounts[job.job_status] = (statusCounts[job.job_status] || 0) + 1;
-  });
-
   return (
     <div className="space-y-8">
+      {/* Job Type Filter */}
+      <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4">
+        <Filter size={20} className="text-slate-600" />
+        <span className="text-sm font-medium text-slate-700">Filter by Job Type:</span>
+        <select
+          value={jobTypeFilter}
+          onChange={(e) => setJobTypeFilter(e.target.value)}
+          className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-sm"
+        >
+          <option value="all">All Types</option>
+          <option value="Delivery">Delivery</option>
+          <option value="Pickup">Pickup</option>
+          <option value="Move">Move</option>
+          <option value="Recover">Recover</option>
+          <option value="Drop">Drop</option>
+          <option value="Shuttle">Shuttle</option>
+        </select>
+      </div>
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Job Trends Chart */}
+        <div className="lg:col-span-2">
+          <JobTrendsChart
+            data={data}
+            dateRange={dateRange}
+            jobTypeFilter={jobTypeFilter}
+            chartType={chartType}
+          />
+        </div>
+
+        {/* Job Type Distribution */}
+        <JobTypeDistributionChart
+          data={data}
+          dateRange={dateRange}
+          chartType="doughnut"
+        />
+
+        {/* Time Series Chart */}
+        <TimeSeriesChart
+          jobsData={data}
+          alertsData={null}
+          efficiencyData={null}
+          dateRange={dateRange}
+          metrics={['jobs']}
+        />
+      </div>
+
       {/* Job Status Summary */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
         <h3 className="text-lg font-bold text-slate-900 mb-4">Job Status Distribution</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <div key={status} className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-900">{count}</div>
-              <div className="text-sm text-slate-600 capitalize">{status}</div>
-            </div>
-          ))}
+          {(() => {
+            const statusCounts = {};
+            data.data?.forEach(job => {
+              statusCounts[job.job_status] = (statusCounts[job.job_status] || 0) + 1;
+            });
+            return Object.entries(statusCounts).map(([status, count]) => (
+              <div key={status} className="text-center p-4 bg-slate-50 rounded-lg">
+                <div className="text-2xl font-bold text-slate-900">{count}</div>
+                <div className="text-sm text-slate-600 capitalize">{status}</div>
+              </div>
+            ));
+          })()}
         </div>
       </div>
 
-      {/* Job Timeline */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
-        <h3 className="text-lg font-bold text-slate-900 mb-4">Job History Timeline</h3>
-        <div className="space-y-4 max-h-96 overflow-y-auto">
-          {data.data?.slice(0, 20).map((job, index) => (
-            <div key={index} className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
-              <div className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
-              <div className="flex-1">
-                <div className="font-medium text-slate-900">Job {job.job_id}</div>
-                <div className="text-sm text-slate-600">
-                  Status: {job.job_status} • Customer: {job.customer_name || 'N/A'}
-                </div>
-              </div>
-              <div className="text-sm text-slate-500">
-                {new Date(job.snapshot_timestamp).toLocaleString()}
-              </div>
-            </div>
-          ))}
+      {/* Recent Jobs Table */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+        <div className="p-6 border-b border-slate-200">
+          <h3 className="text-lg font-bold text-slate-900">Recent Job Activity</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="text-left p-4 font-semibold text-slate-900">Job ID</th>
+                <th className="text-left p-4 font-semibold text-slate-900">Type</th>
+                <th className="text-left p-4 font-semibold text-slate-900">Status</th>
+                <th className="text-left p-4 font-semibold text-slate-900">Customer</th>
+                <th className="text-left p-4 font-semibold text-slate-900">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {data.data?.slice(0, 20).map((job, index) => (
+                <tr key={index} className="hover:bg-slate-50">
+                  <td className="p-4 font-medium text-slate-900">Job {job.job_id}</td>
+                  <td className="p-4 text-slate-600">{job.job_type || 'Unknown'}</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      job.job_status === 'completed' ? 'bg-green-100 text-green-800' :
+                      job.job_status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {job.job_status}
+                    </span>
+                  </td>
+                  <td className="p-4 text-slate-600">{job.customer_name || 'N/A'}</td>
+                  <td className="p-4 text-sm text-slate-600">
+                    {new Date(job.snapshot_timestamp).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -430,6 +554,8 @@ function JobsView({ data, dateRange }) {
 
 // Alerts View Component
 function AlertsView({ data, dateRange }) {
+  const [chartType, setChartType] = useState('severity');
+
   if (!data || data.error) {
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-16 text-center">
@@ -441,12 +567,6 @@ function AlertsView({ data, dateRange }) {
       </div>
     );
   }
-
-  // Group alerts by severity
-  const severityCounts = {};
-  data.alerts?.forEach(alert => {
-    severityCounts[alert.severity] = (severityCounts[alert.severity] || 0) + 1;
-  });
 
   return (
     <div className="space-y-8">
@@ -478,48 +598,112 @@ function AlertsView({ data, dateRange }) {
         />
       </div>
 
-      {/* Alert Trends */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
-        <h3 className="text-lg font-bold text-slate-900 mb-4">Alert Trends by Severity</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.entries(severityCounts).map(([severity, count]) => (
-            <div key={severity} className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-900">{count}</div>
-              <div className="text-sm text-slate-600 capitalize">{severity}</div>
-            </div>
-          ))}
+      {/* Chart Type Selector */}
+      <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4">
+        <PieChart size={20} className="text-slate-600" />
+        <span className="text-sm font-medium text-slate-700">Chart View:</span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setChartType('severity')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              chartType === 'severity'
+                ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            Severity Distribution
+          </button>
+          <button
+            onClick={() => setChartType('timeline')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              chartType === 'timeline'
+                ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            Timeline
+          </button>
+          <button
+            onClick={() => setChartType('response')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              chartType === 'response'
+                ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            Response Time
+          </button>
         </div>
       </div>
 
-      {/* Recent Alerts */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
-        <h3 className="text-lg font-bold text-slate-900 mb-4">Recent Alerts</h3>
-        <div className="space-y-4 max-h-96 overflow-y-auto">
-          {data.alerts?.slice(0, 20).map((alert, index) => (
-            <div key={index} className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
-              <div className={`w-3 h-3 rounded-full ${
-                alert.severity === 'CRITICAL' ? 'bg-red-500' :
-                alert.severity === 'HIGH' ? 'bg-orange-500' :
-                alert.severity === 'MEDIUM' ? 'bg-yellow-500' : 'bg-green-500'
-              }`}></div>
-              <div className="flex-1">
-                <div className="font-medium text-slate-900">{alert.title}</div>
-                <div className="text-sm text-slate-600">{alert.message}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-medium text-slate-900">
-                  {new Date(alert.created_at).toLocaleDateString()}
-                </div>
-                <div className={`text-xs px-2 py-1 rounded-full ${
-                  alert.acknowledged
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {alert.acknowledged ? 'Acknowledged' : 'Pending'}
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Alert Analytics Chart */}
+        <div className="lg:col-span-2">
+          <AlertAnalyticsChart
+            data={data}
+            dateRange={dateRange}
+            chartType={chartType}
+          />
+        </div>
+
+        {/* Time Series Chart */}
+        <TimeSeriesChart
+          jobsData={null}
+          alertsData={data}
+          efficiencyData={null}
+          dateRange={dateRange}
+          metrics={['alerts']}
+        />
+      </div>
+
+      {/* Recent Alerts Table */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+        <div className="p-6 border-b border-slate-200">
+          <h3 className="text-lg font-bold text-slate-900">Recent Alerts</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="text-left p-4 font-semibold text-slate-900">Severity</th>
+                <th className="text-left p-4 font-semibold text-slate-900">Title</th>
+                <th className="text-left p-4 font-semibold text-slate-900">Message</th>
+                <th className="text-left p-4 font-semibold text-slate-900">Status</th>
+                <th className="text-left p-4 font-semibold text-slate-900">Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {data.alerts?.slice(0, 20).map((alert, index) => (
+                <tr key={index} className="hover:bg-slate-50">
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      alert.severity === 'CRITICAL' ? 'bg-red-100 text-red-800' :
+                      alert.severity === 'HIGH' ? 'bg-orange-100 text-orange-800' :
+                      alert.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {alert.severity}
+                    </span>
+                  </td>
+                  <td className="p-4 font-medium text-slate-900">{alert.title}</td>
+                  <td className="p-4 text-slate-600">{alert.message}</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      alert.acknowledged
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {alert.acknowledged ? 'Acknowledged' : 'Pending'}
+                    </span>
+                  </td>
+                  <td className="p-4 text-sm text-slate-600">
+                    {new Date(alert.created_at).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -528,6 +712,8 @@ function AlertsView({ data, dateRange }) {
 
 // Efficiency View Component
 function EfficiencyView({ data, dateRange }) {
+  const [chartType, setChartType] = useState('scores');
+
   if (!data || data.error) {
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-16 text-center">
@@ -546,27 +732,101 @@ function EfficiencyView({ data, dateRange }) {
       <div className="grid grid-cols-4 gap-6">
         <MetricCard
           title="Avg Efficiency Score"
-          value="82.5%"
+          value={(() => {
+            const validMetrics = data.data.filter(m => m.efficiency_score !== undefined);
+            const avg = validMetrics.length > 0
+              ? (validMetrics.reduce((sum, m) => sum + m.efficiency_score, 0) / validMetrics.length).toFixed(1)
+              : 0;
+            return `${avg}%`;
+          })()}
           icon={Zap}
           color="green"
         />
         <MetricCard
           title="Total Miles Driven"
-          value="1,247"
+          value={data.data
+            .filter(m => m.total_miles !== undefined)
+            .reduce((sum, m) => sum + m.total_miles, 0)
+            .toLocaleString()}
           icon={Activity}
           color="blue"
         />
         <MetricCard
           title="Excess Miles"
-          value="124"
+          value={data.data
+            .filter(m => m.excess_miles !== undefined)
+            .reduce((sum, m) => sum + m.excess_miles, 0)
+            .toLocaleString()}
           icon={TrendingUp}
           color="orange"
         />
         <MetricCard
           title="Fuel Saved"
-          value="$89"
+          value={`$${data.data
+            .filter(m => m.fuel_saved !== undefined)
+            .reduce((sum, m) => sum + m.fuel_saved, 0)
+            .toFixed(0)}`}
           icon={DollarSign}
           color="purple"
+        />
+      </div>
+
+      {/* Chart Type Selector */}
+      <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4">
+        <Activity size={20} className="text-slate-600" />
+        <span className="text-sm font-medium text-slate-700">Chart View:</span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setChartType('scores')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              chartType === 'scores'
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            Efficiency Scores
+          </button>
+          <button
+            onClick={() => setChartType('trucks')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              chartType === 'trucks'
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            By Truck
+          </button>
+          <button
+            onClick={() => setChartType('miles')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              chartType === 'miles'
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            Miles Analysis
+          </button>
+        </div>
+      </div>
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Efficiency Metrics Chart */}
+        <div className="lg:col-span-2">
+          <EfficiencyMetricsChart
+            data={data}
+            dateRange={dateRange}
+            chartType={chartType}
+          />
+        </div>
+
+        {/* Time Series Chart */}
+        <TimeSeriesChart
+          jobsData={null}
+          alertsData={null}
+          efficiencyData={data}
+          dateRange={dateRange}
+          metrics={['efficiency']}
         />
       </div>
 
@@ -588,7 +848,7 @@ function EfficiencyView({ data, dateRange }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {data.data?.map((metric, index) => (
+              {data.data?.slice(0, 20).map((metric, index) => (
                 <tr key={index} className="hover:bg-slate-50">
                   <td className="p-4 font-medium text-slate-900">{metric.truck_id}</td>
                   <td className="p-4">

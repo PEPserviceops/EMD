@@ -33,7 +33,10 @@ class FileMakerAPI {
       const response = await axios.post(url, {}, {
         headers: {
           'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'User-Agent': 'FileMakerDataAPI/1.0',
+          'Origin': 'MODD',
+          'Referer': 'https://modd.mainspringhost.com/'
         }
       });
 
@@ -112,16 +115,20 @@ class FileMakerAPI {
       // Default to recent jobs (last 30 days) to avoid historical data
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const startDate = options.startDate || thirtyDaysAgo.toLocaleDateString('en-US');
       const endDate = options.endDate || new Date().toLocaleDateString('en-US');
-      
+
       console.log(`[FileMaker] Fetching jobs from ${startDate} to ${endDate}`);
 
-      // Use find query with date range for current data only
+      // Filter for specific job types only
+      const allowedJobTypes = ['Delivery', 'Pickup', 'Move', 'Recover', 'Drop', 'Shuttle'];
+
+      // Use find query with date range and job type filtering
       const findQuery = {
         query: [{
-          'job_date': `${startDate}...${endDate}`
+          'job_date': `${startDate}...${endDate}`,
+          'job_type': allowedJobTypes.join('...') // FileMaker OR syntax
         }],
         sort: [{
           'job_date': {
@@ -170,7 +177,7 @@ class FileMakerAPI {
    */
   async _getRecordsFallback(token, options = {}) {
     const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/records`;
-    
+
     const params = {
       _limit: options.limit || 200,
       _offset: options.offset || 1
@@ -186,20 +193,26 @@ class FileMakerAPI {
 
     if (response.data && response.data.response && response.data.response.data) {
       let jobs = response.data.response.data;
-      
-      // Filter out DELETED jobs and apply client-side date filtering
+
+      // Filter for allowed job types
+      const allowedJobTypes = ['Delivery', 'Pickup', 'Move', 'Recover', 'Drop', 'Shuttle'];
+
+      // Filter out DELETED jobs, apply job type filtering, and client-side date filtering
       jobs = jobs.filter(job => {
         const status = job.fieldData?.job_status;
+        const jobType = job.fieldData?.job_type;
         const isNotDeleted = status && status !== 'DELETED' && status !== '';
-        
+        const isAllowedType = allowedJobTypes.includes(jobType);
+
         // Apply date filtering if no server-side filtering
+        let dateFilter = true;
         if (options.startDate && job.fieldData?.job_date) {
           const jobDate = new Date(job.fieldData.job_date);
           const startDate = new Date(options.startDate);
-          return isNotDeleted && jobDate >= startDate;
+          dateFilter = jobDate >= startDate;
         }
-        
-        return isNotDeleted;
+
+        return isNotDeleted && isAllowedType && dateFilter;
       });
 
       // Sort by job_date desc (newest first)
@@ -316,4 +329,3 @@ module.exports = {
   FileMakerAPI,
   testFileMakerConnection
 };
-

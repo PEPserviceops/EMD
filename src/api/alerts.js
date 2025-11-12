@@ -171,13 +171,13 @@ const alertRules = [
       try {
         // If GPS verification is not available or has no results, skip
         if (!gpsVerification || !gpsVerification.success || !gpsVerification.results) return false;
-        
+
         // Check if we have job-specific verification results
         if (!gpsVerification.results.resultsByJobId) return false;
-        
+
         const verificationResult = gpsVerification.results.resultsByJobId[job.recordId];
         if (!verificationResult) return false;
-        
+
         return verificationResult.verificationStatus === 'unknown' &&
                verificationResult.hasSamsaraTracking === true;
       } catch (error) {
@@ -189,6 +189,40 @@ const alertRules = [
       const verificationResult = gpsVerification?.results?.resultsByJobId?.[job.recordId];
       const truckId = verificationResult?.truckId;
       return `Job ${job.fieldData._kp_job_id}: GPS data unavailable for truck ${truckId}`;
+    }
+  },
+  {
+    id: 'gps-proximity-alert',
+    name: 'Truck Approaching Destination',
+    severity: SEVERITY.LOW,
+    evaluate: (job, gpsVerification) => {
+      try {
+        // If GPS verification is not available or has no results, skip
+        if (!gpsVerification || !gpsVerification.success || !gpsVerification.results) return false;
+
+        // Check if we have job-specific verification results
+        if (!gpsVerification.results.resultsByJobId) return false;
+
+        const verificationResult = gpsVerification.results.resultsByJobId[job.recordId];
+        if (!verificationResult) return false;
+
+        // Only trigger for verified (on-schedule) trucks within proximity threshold
+        const distance = verificationResult.distance || 0;
+        const proximityThreshold = 2; // miles - alert when within 2 miles of destination
+
+        return verificationResult.verificationStatus === 'verified' &&
+               distance > 0 && // Has valid distance data
+               distance <= proximityThreshold; // Within proximity threshold
+      } catch (error) {
+        console.warn(`GPS proximity alert evaluation error for job ${job.recordId}:`, error.message);
+        return false;
+      }
+    },
+    message: (job, gpsVerification) => {
+      const verificationResult = gpsVerification?.results?.resultsByJobId?.[job.recordId];
+      const distance = verificationResult?.distance || 0;
+      const truckId = verificationResult?.truckId;
+      return `Job ${job.fieldData._kp_job_id}: Truck ${truckId} is ${distance.toFixed(1)} miles from destination`;
     }
   }
 ];
@@ -747,4 +781,3 @@ module.exports = {
   alertRules,
   SEVERITY
 };
-
