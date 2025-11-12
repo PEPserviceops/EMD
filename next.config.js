@@ -1,15 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  
+
   // Disable static export to enable API routes in Vercel
   output: undefined,
-  
+
   // Environment variables that should be available on the client side
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
   },
-  
+
   // Configure headers for API routes
   async headers() {
     return [
@@ -27,4 +27,3 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
-

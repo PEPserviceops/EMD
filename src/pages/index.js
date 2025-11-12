@@ -16,3 +16,15 @@ const Dashboard = dynamic(() => import('../components/Dashboard'), {
 export default function Home() {
   return <Dashboard />
 }
+
+// Force server-side rendering to avoid static generation issues
+export function getServerSideProps() {
+  return {
+    props: {},
+  }
+}
+
+// Force runtime to be server-side
+export const config = {
+  unstable_runtime: 'nodejs',
+}
