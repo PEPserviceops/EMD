@@ -59,6 +59,25 @@ export default async function handler(req, res) {
     console.log(`[Scheduled Jobs API] Fetching jobs for date: ${targetDate}`);
 
     // Query Supabase for jobs matching criteria
+    if (!supabaseService.supabase) {
+      return res.status(200).json({
+        success: true,
+        date: targetDate,
+        totalJobs: 0,
+        groupedBy: groupBy,
+        groups: {},
+        jobs: [],
+        metadata: {
+          drivers: [],
+          trucks: [],
+          statuses: []
+        },
+        fallback: true,
+        message: 'Historical job data is not available - Supabase service disabled',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     let query = supabaseService.supabase
       .from('jobs_history')
       .select('*')

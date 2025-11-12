@@ -11,6 +11,16 @@
 const predictiveAnalyticsService = require('../../../services/PredictiveAnalyticsService');
 const predictiveModelService = require('../../../services/PredictiveModelService');
 const supabaseService = require('../../../services/SupabaseService');
+const CircuitBreaker = require('../../../utils/circuitBreaker');
+
+// Create circuit breaker for predictive analytics
+const predictiveCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  timeout: 60000,
+  monitor: (event, data) => {
+    console.log(`Predictive Circuit Breaker ${event}:`, data);
+  }
+});
 
 export default async function handler(req, res) {
   // Enable CORS for frontend integration
@@ -27,12 +37,23 @@ export default async function handler(req, res) {
   const { action, jobId, data } = req.method === 'GET' ? req.query : req.body;
 
   try {
-    // Check if predictive analytics is enabled
-    if (!predictiveAnalyticsService.isEnabled()) {
-      return res.status(503).json({
-        error: 'Predictive Analytics service not configured',
-        message: 'Required services (Supabase/OpenRouter) are not available',
-        enabled: false
+    // Always return graceful response instead of 503
+    const serviceEnabled = predictiveAnalyticsService.isEnabled();
+    
+    if (!serviceEnabled) {
+      return res.status(200).json({
+        success: true,
+        enabled: false,
+        fallback: true,
+        message: 'Predictive Analytics service is disabled - using fallback data',
+        service: {
+          enabled: false,
+          models: [],
+          lastUpdate: new Date().toISOString()
+        },
+        predictions: [],
+        status: 'graceful_fallback',
+        timestamp: new Date().toISOString()
       });
     }
 
@@ -68,13 +89,22 @@ async function handleGetRequest(req, res, params) {
 
   switch (action) {
     case 'status':
-      return res.status(200).json({
-        success: true,
-        service: {
+      const statusResult = await predictiveCircuitBreaker.call(
+        async () => ({
           enabled: predictiveAnalyticsService.isEnabled(),
           models: predictiveModelService.listModels(),
           lastUpdate: new Date().toISOString()
+        }),
+        {
+          enabled: false,
+          models: [],
+          lastUpdate: new Date().toISOString()
         }
+      );
+      return res.status(200).json({
+        success: true,
+        service: statusResult,
+        circuitBreaker: predictiveCircuitBreaker.getState()
       });
 
     case 'models':
