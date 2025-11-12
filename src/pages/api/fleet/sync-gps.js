@@ -5,7 +5,6 @@
  */
 
 const samsaraService = require('../../../services/SamsaraIntegrationService');
-const pollingService = require('../../../services/PollingService');
 
 export default async function handler(req, res) {
   try {
@@ -39,21 +38,11 @@ export default async function handler(req, res) {
         const gpsData = await samsaraService.getMultipleTruckLocations(allTruckIds);
         results.allTrucks = gpsData;
 
-        // Also trigger verification for active jobs
-        try {
-          const pollingStats = pollingService.getStats();
-          const currentJobs = pollingService.getCurrentJobs ? 
-            await pollingService.getCurrentJobs() : [];
-          
-          if (currentJobs.length > 0) {
-            console.log(`Running GPS verification for ${currentJobs.length} active jobs`);
-            const verification = await samsaraService.verifyJobs(currentJobs);
-            results.jobVerification = verification;
-          }
-        } catch (error) {
-          console.error('Error running job verification during GPS sync:', error);
-          results.jobVerification = { error: error.message };
-        }
+        // GPS sync completed - job verification removed (polling service no longer available)
+        results.jobVerification = {
+          skipped: true,
+          reason: 'Polling service no longer available - manual job verification required'
+        };
       }
 
       // Clear cache after sync

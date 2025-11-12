@@ -76,11 +76,11 @@ class OnDemandDataService {
       // Additional date validation - ensure we're getting recent data
       const recentJobs = activeJobs.filter(job => {
         if (!job.fieldData?.job_date) return false;
-        
+
         const jobDate = new Date(job.fieldData.job_date);
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - this.config.daysBack);
-        
+
         return jobDate >= cutoffDate;
       });
 
@@ -209,4 +209,3 @@ class OnDemandDataService {
 }
 
 module.exports = OnDemandDataService;
-
