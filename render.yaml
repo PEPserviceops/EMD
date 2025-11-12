@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: emd-dashboard
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        fromSecret: emd_app_url
+      - key: NEXT_PUBLIC_API_URL
+        fromSecret: emd_api_url
+      - key: FILEMAKER_HOST
+        fromSecret: filemaker_host
+      - key: FILEMAKER_DATABASE
+        fromSecret: filemaker_database
+      - key: FILEMAKER_LAYOUT
+        fromSecret: filemaker_layout
+      - key: FILEMAKER_USER
+        fromSecret: filemaker_user
+      - key: FILEMAKER_PASSWORD
+        fromSecret: filemaker_password
+      - key: SAMSARA_API_TOKEN
+        fromSecret: samsara_api_token
+      - key: OPENROUTER_API_KEY
+        fromSecret: openrouter_api_key
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        fromSecret: supabase_url
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        fromSecret: supabase_anon_key
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        fromSecret: supabase_service_role_key
+      - key: NEXTAUTH_SECRET
+        fromSecret: nextauth_secret
+      - key: JWT_SECRET
+        fromSecret: jwt_secret
+      - key: ENCRYPTION_KEY
+        fromSecret: encryption_key
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_WINDOW
+        value: 15
+      - key: RATE_LIMIT_MAX
+        value: 100
+      - key: POLLING_BATCH_SIZE
+        value: 100
