@@ -7,10 +7,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import AlertCard from './AlertCard';
 import PredictiveAnalytics from './PredictiveAnalytics';
 import RouteOptimization from './RouteOptimization';
-import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3, Navigation, MapPin, Truck, Zap } from 'lucide-react';
+import AnalyticsDashboard from './AnalyticsDashboard';
+import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3, Navigation, MapPin, Truck, Zap, Database } from 'lucide-react';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'predictions', 'route-optimization', or 'gps-verification'
+  const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'predictions', 'route-optimization', 'analytics', or 'gps-verification'
   const [alerts, setAlerts] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -228,7 +229,7 @@ export default function Dashboard() {
       {/* Enhanced Navigation Tabs */}
       <div className="max-w-7xl mx-auto px-8 pt-6">
         <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-2">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             <button
               onClick={() => setActiveTab('alerts')}
               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
@@ -257,6 +258,19 @@ export default function Dashboard() {
               <Brain size={20} />
               <span>AI Predictions</span>
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'analytics'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <Database size={20} />
+              <span>Analytics</span>
+              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
             </button>
 
             <button
@@ -436,10 +450,12 @@ export default function Dashboard() {
           </div>
         ) : activeTab === 'predictions' ? (
           <PredictiveAnalytics />
+        ) : activeTab === 'analytics' ? (
+          <AnalyticsDashboard />
         ) : activeTab === 'route-optimization' ? (
           <RouteOptimization />
         ) : (
-          <GpsVerificationPanel 
+          <GpsVerificationPanel
             gpsStatus={gpsStatus}
             gpsMapping={gpsMapping}
             isGpsLoading={isGpsLoading}
