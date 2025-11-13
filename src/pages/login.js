@@ -222,3 +222,10 @@ export default function LoginPage() {
     </div>
   );
 }
+
+// Force server-side rendering to avoid static generation issues
+export function getServerSideProps() {
+  return {
+    props: {},
+  }
+}
