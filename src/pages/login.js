@@ -16,7 +16,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const router = useRouter();
+
+  // Initialize router only on client side to prevent SSR issues
+  const router = typeof window !== 'undefined' ? useRouter() : null;
 
   // Check if user is already authenticated
   useEffect(() => {
@@ -24,6 +26,9 @@ export default function LoginPage() {
   }, []);
 
   const checkAuthStatus = async () => {
+    // Only run this check on client side to prevent SSR issues
+    if (typeof window === 'undefined' || !router) return;
+
     try {
       const response = await fetch('/api/auth/session');
       const data = await response.json();
@@ -72,7 +77,9 @@ export default function LoginPage() {
 
         // Redirect to dashboard after a short delay
         setTimeout(() => {
-          router.push('/');
+          if (router) {
+            router.push('/');
+          }
         }, 1000);
       } else {
         setError(data.message || 'Login failed');
