@@ -23,8 +23,3 @@ export function getServerSideProps() {
     props: {},
   }
 }
-
-// Force runtime to be server-side
-export const config = {
-  unstable_runtime: 'nodejs',
-}
