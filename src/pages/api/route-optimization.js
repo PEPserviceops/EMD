@@ -18,6 +18,7 @@ const routeOptimizationService = require('../../services/RouteOptimizationServic
 const samsaraIntegrationService = require('../../services/SamsaraIntegrationService');
 const dispatchManagementService = require('../../services/DispatchManagementService');
 const geocodingService = require('../../services/GeocodingService');
+const openRouterService = require('../../services/OpenRouterService');
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -121,9 +122,9 @@ async function handleStatusCheck(req, res) {
 
   const gpsStatus = {
     service: 'GPS Integration',
-    enabled: gpsIntegrationService.isEnabled(),
-    vehicles: gpsIntegrationService.vehicles.size,
-    geofences: gpsIntegrationService.geofences.size
+    enabled: samsaraIntegrationService.isEnabled(),
+    vehicles: samsaraIntegrationService.getTruckMapping() ? Object.keys(samsaraIntegrationService.getTruckMapping()).length : 0,
+    geofences: 0 // Placeholder for future geofence implementation
   };
 
   const dispatchStatus = {
@@ -322,14 +323,40 @@ async function handleOptimizeRoutes(req, res, jobs, vehicles, options) {
       options
     );
 
+    // Add AI-powered insights if OpenRouter is available
+    let aiInsights = null;
+    if (openRouterService.isEnabled()) {
+      try {
+        const routeData = {
+          stops: processedJobs.map(job => ({
+            id: job.id,
+            address: job.address,
+            priority: job.priority
+          })),
+          totalDistance: result.routes.reduce((sum, route) => sum + route.totalDistance, 0),
+          estimatedDuration: result.routes.reduce((sum, route) => sum + route.totalTime, 0),
+          truckId: processedVehicles[0]?.id,
+          driverId: processedVehicles[0]?.driverId
+        };
+
+        aiInsights = await openRouterService.analyzeRouteOptimization(routeData, {});
+        console.log('AI Route optimization insights generated');
+      } catch (aiError) {
+        console.warn('AI route analysis failed:', aiError.message);
+        aiInsights = { error: 'AI analysis temporarily unavailable' };
+      }
+    }
+
     res.status(200).json({
       success: true,
       optimization: result,
+      aiInsights: aiInsights,
       metadata: {
         algorithm: result.algorithm,
         jobsProcessed: result.metadata.totalJobs,
         vehiclesUsed: result.metadata.totalVehicles,
-        executionTime: result.metadata.optimizationTime
+        executionTime: result.metadata.optimizationTime,
+        aiEnhanced: !!aiInsights
       },
       timestamp: new Date().toISOString()
     });

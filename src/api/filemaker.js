@@ -80,10 +80,10 @@ class FileMakerAPI {
 
     try {
       const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/_find`;
-      
+
       const response = await axios.post(url, {
         query: [{
-          'job_id': jobId
+          '_kp_job_id': jobId
         }]
       }, {
         headers: {
@@ -176,57 +176,71 @@ class FileMakerAPI {
    * @private
    */
   async _getRecordsFallback(token, options = {}) {
-    const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/records`;
+    try {
+      const url = `https://${this.host}/fmi/data/vLatest/databases/${this.database}/layouts/${this.layout}/records`;
 
-    const params = {
-      _limit: options.limit || 200,
-      _offset: options.offset || 1
-    };
+      const params = {
+        _limit: options.limit || 200,
+        _offset: options.offset || 1
+      };
 
-    const response = await axios.get(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      params
-    });
+      console.log(`[FileMaker] Fallback: Fetching records with limit ${params._limit}, offset ${params._offset}`);
 
-    if (response.data && response.data.response && response.data.response.data) {
-      let jobs = response.data.response.data;
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        params
+      });
 
-      // Filter for allowed job types
-      const allowedJobTypes = ['Delivery', 'Pickup', 'Move', 'Recover', 'Drop', 'Shuttle'];
+      if (response.data && response.data.response && response.data.response.data) {
+        let jobs = response.data.response.data;
+        console.log(`[FileMaker] Fallback: Retrieved ${jobs.length} raw jobs from records endpoint`);
 
-      // Filter out DELETED jobs, apply job type filtering, and client-side date filtering
-      jobs = jobs.filter(job => {
-        const status = job.fieldData?.job_status;
-        const jobType = job.fieldData?.job_type;
-        const isNotDeleted = status && status !== 'DELETED' && status !== '';
-        const isAllowedType = allowedJobTypes.includes(jobType);
+        // Filter for allowed job types
+        const allowedJobTypes = ['Delivery', 'Pickup', 'Move', 'Recover', 'Drop', 'Shuttle'];
 
-        // Apply date filtering if no server-side filtering
-        let dateFilter = true;
-        if (options.startDate && job.fieldData?.job_date) {
-          const jobDate = new Date(job.fieldData.job_date);
+        // Filter out DELETED jobs and apply job type filtering
+        jobs = jobs.filter(job => {
+          const status = job.fieldData?.job_status;
+          const jobType = job.fieldData?.job_type;
+          const isNotDeleted = status && status !== 'DELETED' && status !== '';
+          const isAllowedType = allowedJobTypes.includes(jobType);
+
+          return isNotDeleted && isAllowedType;
+        });
+
+        console.log(`[FileMaker] Fallback: After filtering, ${jobs.length} jobs remain`);
+
+        // Sort by job_date desc (newest first)
+        jobs.sort((a, b) => {
+          const dateA = new Date(a.fieldData?.job_date || 0);
+          const dateB = new Date(b.fieldData?.job_date || 0);
+          return dateB - dateA;
+        });
+
+        // Apply client-side date filtering if dates provided
+        if (options.startDate) {
           const startDate = new Date(options.startDate);
-          dateFilter = jobDate >= startDate;
+          jobs = jobs.filter(job => {
+            if (!job.fieldData?.job_date) return false;
+            const jobDate = new Date(job.fieldData.job_date);
+            return jobDate >= startDate;
+          });
+          console.log(`[FileMaker] Fallback: After date filtering (${options.startDate}), ${jobs.length} jobs remain`);
         }
 
-        return isNotDeleted && isAllowedType && dateFilter;
-      });
+        console.log(`[FileMaker] Fallback: Final result - ${jobs.length} filtered and sorted jobs`);
+        return jobs;
+      }
 
-      // Sort by job_date desc (newest first)
-      jobs.sort((a, b) => {
-        const dateA = new Date(a.fieldData?.job_date || 0);
-        const dateB = new Date(b.fieldData?.job_date || 0);
-        return dateB - dateA;
-      });
-
-      console.log(`[FileMaker] Fallback: Retrieved ${jobs.length} filtered and sorted jobs`);
-      return jobs;
+      console.log('[FileMaker] Fallback: No data in response');
+      return [];
+    } catch (error) {
+      console.error('[FileMaker] Fallback query failed:', error.message);
+      throw error;
     }
-
-    return [];
   }
 
   /**

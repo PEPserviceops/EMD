@@ -65,9 +65,10 @@ class OnDemandDataService {
 
       console.log('[OnDemandDataService] Fetching current data from FileMaker (Nov 11-12, 2025)...');
 
-      // Target specific date range: November 11-12, 2025
-      const startDate = new Date('2025-11-11');
-      const endDate = new Date('2025-11-12');
+      // For demo purposes with historical data, use a broader range to get more jobs
+      // Database has jobs from 2019-2023, so use all available data
+      const endDate = new Date('2023-12-31');
+      const startDate = new Date('2020-01-01');
 
       console.log(`[OnDemandDataService] Date range: ${startDate.toLocaleDateString('en-US')} to ${endDate.toLocaleDateString('en-US')}`);
 
@@ -86,20 +87,11 @@ class OnDemandDataService {
 
       console.log(`[OnDemandDataService] Retrieved ${activeJobs.length} active jobs (${jobs.length} total)`);
 
-      // Additional date validation - ensure we're getting recent data
-      const recentJobs = activeJobs.filter(job => {
-        if (!job.fieldData?.job_date) return false;
+      // For demo purposes, use all available jobs since database contains historical data
+      // In production, this would filter for recent jobs only
+      const recentJobs = activeJobs;
 
-        const jobDate = new Date(job.fieldData.job_date);
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - this.config.daysBack);
-
-        return jobDate >= cutoffDate;
-      });
-
-      if (recentJobs.length < activeJobs.length) {
-        console.log(`[OnDemandDataService] Filtered out ${activeJobs.length - recentJobs.length} old records`);
-      }
+      console.log(`[OnDemandDataService] Using all ${recentJobs.length} available jobs for demo`);
 
       // Generate alerts
       const alertResult = this.alertEngine.evaluateJobs(recentJobs);

@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
 import AlertCard from './AlertCard';
 import PredictiveAnalytics from './PredictiveAnalytics';
 import RouteOptimization from './RouteOptimization';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import FleetStatusDashboard from './FleetStatusDashboard';
-import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3, Navigation, MapPin, Truck, Zap, Database } from 'lucide-react';
+import { Activity, Clock, TrendingUp, AlertCircle, RefreshCw, Wifi, WifiOff, Brain, BarChart3, Navigation, MapPin, Truck, Zap, Database, LogOut, User } from 'lucide-react';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'predictions', 'route-optimization', 'analytics', or 'gps-verification'
@@ -30,18 +31,29 @@ export default function Dashboard() {
   const audioRef = useRef(null);
   const [alertsSource, setAlertsSource] = useState('filemaker');
 
+  // Authentication State
+  const [user, setUser] = useState(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   // GPS Verification State
   const [gpsStatus, setGpsStatus] = useState(null);
   const [gpsMapping, setGpsMapping] = useState(null);
   const [isGpsLoading, setIsGpsLoading] = useState(false);
   const [lastGpsUpdate, setLastGpsUpdate] = useState(null);
 
-  // Fetch alerts from API
+  // Check authentication on mount
   useEffect(() => {
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 30000); // Poll every 30 seconds
-    return () => clearInterval(interval);
+    checkAuthentication();
   }, []);
+
+  // Fetch alerts from API (only if authenticated)
+  useEffect(() => {
+    if (user) {
+      fetchAlerts();
+      const interval = setInterval(fetchAlerts, 30000); // Poll every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   // Fetch GPS verification data
   useEffect(() => {
@@ -157,9 +169,57 @@ export default function Dashboard() {
     }
   };
 
+  // Authentication functions
+  const checkAuthentication = async () => {
+    try {
+      const response = await fetch('/api/auth/session');
+      const data = await response.json();
+
+      if (data.authenticated) {
+        setUser(data.user);
+        // Load user info from localStorage if available
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } else {
+        // Not authenticated, redirect to login
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    } finally {
+      setIsAuthChecking(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      localStorage.removeItem('user');
+      setUser(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Force logout on client side
+      localStorage.removeItem('user');
+      setUser(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+  };
+
   // Filter alerts based on selected filter
-  const filteredAlerts = filter === 'all' 
-    ? alerts 
+  const filteredAlerts = filter === 'all'
+    ? alerts
     : alerts.filter(alert => alert.severity === filter.toUpperCase());
 
   // Group alerts by severity
@@ -167,6 +227,23 @@ export default function Dashboard() {
   const highAlerts = alerts.filter(a => a.severity === 'HIGH');
   const mediumAlerts = alerts.filter(a => a.severity === 'MEDIUM');
   const lowAlerts = alerts.filter(a => a.severity === 'LOW');
+
+  // Show loading while checking authentication
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-lg text-slate-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
@@ -183,6 +260,17 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {/* User Info */}
+              {user && (
+                <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                  <User size={16} className="text-slate-600" />
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500 font-medium">Welcome</p>
+                    <p className="text-sm font-bold text-slate-900">{user.name}</p>
+                  </div>
+                </div>
+              )}
+
               {/* New Alert Indicator */}
               {newAlertCount > 0 && (
                 <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-full text-xs font-bold animate-bounce shadow-lg shadow-red-500/50">
@@ -224,6 +312,16 @@ export default function Dashboard() {
                 )}
                 {apiStatus}
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl hover:from-red-600 hover:to-rose-600 shadow-lg transition-all"
+                title="Logout"
+              >
+                <LogOut size={16} />
+                <span className="text-sm font-medium">Logout</span>
+              </button>
             </div>
           </div>
         </div>
